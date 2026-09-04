@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>仓库历史记录</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1180px;margin:auto;padding:22px}.card{background:#151515;border:1px solid #262626;border-radius:16px;padding:16px;margin-bottom:14px}h1{margin:0 0 6px;font-size:24px}.muted{color:#999;font-size:13px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}input,button{font:inherit;border-radius:11px} input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:7px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:inline-grid;place-content:center;cursor:pointer;vertical-align:middle;transition:all .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}input[type=checkbox]::before{content:"✓";font-size:14px;line-height:1;font-weight:900;color:#0b0b0b;transform:scale(0);opacity:0;transition:all .16s ease}input[type=checkbox]:hover{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.1)}input[type=checkbox]:checked{background:rgba(255,255,255,.88);border-color:rgba(255,255,255,.95);box-shadow:0 0 0 4px rgba(255,255,255,.06)}input[type=checkbox]:checked::before{transform:scale(1);opacity:1}tbody tr{transition:background .18s ease,box-shadow .18s ease}tbody tr:has(.taskPick:checked){background:rgba(255,255,255,.045);box-shadow:inset 3px 0 0 rgba(255,255,255,.55)}input{width:100%;background:#202020;color:#fff;border:1px solid #333;padding:11px}button{border:0;padding:11px 14px;font-weight:800;background:#fff;color:#000}.dark{background:#2a2a2a;color:#fff}.red{background:#5a1c1c;color:#ffc4c4}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.hidden{display:none!important}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #292929;font-size:13px}th{color:#aaa;position:sticky;top:0;background:#151515}.num{text-align:right}.pill{display:inline-block;background:#242424;border-radius:999px;padding:4px 8px}.details{background:#101010;padding:10px}.details table{min-width:500px}.ok{color:#83ff9e}.err{color:#ff9a9a}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card"><h1>📊 仓库历史记录</h1><div class="muted">管理员登录后查看所有已同步任务。</div></div>
+
+  <div id="loginCard" class="card">
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <input id="email" type="email" placeholder="管理员 Email">
+      <input id="password" type="password" placeholder="密码">
+    </div>
+    <div class="actions"><button onclick="login()">登录</button></div>
+    <div id="loginMsg" class="muted" style="margin-top:8px"></div>
+  </div>
+
+  <div id="app" class="hidden">
+    <div class="card">
+      <div class="grid">
+        <input id="dateFrom" type="date" title="开始日期">
+        <input id="dateTo" type="date" title="结束日期">
+        <input id="employee" placeholder="员工姓名">
+        <input id="task" placeholder="任务名称">
+      </div>
+      <div class="actions">
+        <button onclick="loadTasks()">查询</button>
+        <button class="dark" onclick="clearFilters()">清除筛选</button>
+        <button class="dark" onclick="selectAllVisible()">全选</button>
+        <button class="dark" onclick="clearSelection()">取消全选</button>
+        <button class="dark" onclick="exportSelected()">导出已勾选 Excel</button>
+        <button class="red" onclick="logout()">退出</button>
+      </div>
+      <div id="status" class="muted" style="margin-top:10px"></div>
+    </div>
+
+    <div class="card tablewrap">
+      <table>
+        <thead><tr><th style="width:44px"><input id="selectAllBox" type="checkbox" title="全选当前结果" onchange="toggleSelectAll(this.checked)"></th><th>日期</th><th>员工</th><th>任务名称</th><th class="num">SKU种类</th><th class="num">总数量</th><th>时间</th><th>操作</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+<script>
+const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
+const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
+const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+let currentTasks=[];
+const $=id=>document.getElementById(id);
+
+async function login(){
+ $('loginMsg').textContent='登录中…';
+ const {error}=await sb.auth.signInWithPassword({email:$('email').value.trim(),password:$('password').value});
+ if(error){$('loginMsg').textContent='登录失败：'+error.message;$('loginMsg').className='err';return}
+ $('loginMsg').textContent='';await showApp();
+}
+async function logout(){await sb.auth.signOut();location.reload()}
+async function showApp(){
+ $('loginCard').classList.add('hidden');$('app').classList.remove('hidden');await loadTasks();
+}
+async function clearFilters(){['dateFrom','dateTo','employee','task'].forEach(id=>$(id).value='');await loadTasks()}
+
+async function loadTasks(){
+ $('status').textContent='读取中…';
+ let q=sb.from('tasks').select('*').order('task_date',{ascending:false}).order('created_at',{ascending:false}).limit(1000);
+ if($('dateFrom').value)q=q.gte('task_date',$('dateFrom').value);
+ if($('dateTo').value)q=q.lte('task_date',$('dateTo').value);
+ if($('employee').value.trim())q=q.ilike('employee_name','%'+$('employee').value.trim()+'%');
+ if($('task').value.trim())q=q.ilike('task_name','%'+$('task').value.trim()+'%');
+ const {data,error}=await q;
+ if(error){$('status').textContent='读取失败：'+error.message;$('status').className='err';return}
+ currentTasks=data||[];$('status').className='muted';$('status').textContent=`共 ${currentTasks.length} 个任务`;
+ renderTasks();
+}
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function renderTasks(){
+ const tb=$('tbody');tb.innerHTML='';
+ if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
+ currentTasks.forEach(t=>{
+   const tr=document.createElement('tr');
+   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}</td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看 SKU</button></td>`;
+   tb.appendChild(tr);
+   const detail=document.createElement('tr');detail.id='d_'+t.id;detail.className='hidden';detail.innerHTML='<td colspan="8" class="details"><div class="muted">读取 SKU…</div></td>';tb.appendChild(detail);
+ });
+}
+async function toggleDetails(id,btn){
+ const row=$('d_'+id);if(!row.classList.contains('hidden')){row.classList.add('hidden');btn.textContent='查看 SKU';return}
+ row.classList.remove('hidden');btn.textContent='收起';
+ const cell=row.querySelector('td');cell.innerHTML='<div class="muted">读取 SKU…</div>';
+ const {data,error}=await sb.from('task_items').select('sku,qty').eq('task_id',id).order('sku');
+ if(error){cell.innerHTML='<div class="err">读取失败：'+esc(error.message)+'</div>';return}
+ cell.innerHTML='<table><thead><tr><th>SKU</th><th class="num">数量</th></tr></thead><tbody>'+(data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td></tr>`).join('')+'</tbody></table>';
+}
+function selectedIds(){return [...document.querySelectorAll('.taskPick:checked')].map(x=>x.dataset.id)}
+function toggleSelectAll(checked){document.querySelectorAll('.taskPick').forEach(x=>x.checked=checked);updateSelectAllState()}
+function selectAllVisible(){toggleSelectAll(true)}
+function clearSelection(){toggleSelectAll(false)}
+function updateSelectAllState(){
+ const boxes=[...document.querySelectorAll('.taskPick')], checked=boxes.filter(x=>x.checked).length, all=$('selectAllBox');
+ if(!all)return; all.checked=boxes.length>0&&checked===boxes.length; all.indeterminate=checked>0&&checked<boxes.length;
+ $('status').textContent=`共 ${currentTasks.length} 个任务，已勾选 ${checked} 个`;
+}
+async function exportSelected(){
+ const ids=selectedIds();
+ if(!ids.length)return alert('请先勾选需要导出的任务');
+ const selectedTasks=currentTasks.filter(x=>ids.includes(x.id));
+ $('status').textContent=`正在读取 ${selectedTasks.length} 个任务的 SKU 明细并生成 Excel…`;
+
+ const {data:items,error}=await sb.from('task_items').select('task_id,sku,qty').in('task_id',ids).order('sku');
+ if(error){$('status').textContent='导出失败：'+error.message;return}
+ const wb=XLSX.utils.book_new();
+ const taskRows=[['日期','员工','任务名称','SKU种类','总数量','创建时间'],...selectedTasks.map(t=>[t.task_date,t.employee_name,t.task_name||'',t.sku_types,t.total_qty,t.created_at])];
+ const map=Object.fromEntries(selectedTasks.map(t=>[t.id,t]));
+ const itemRows=[['日期','员工','任务名称','SKU','数量'],...(items||[]).map(x=>{const t=map[x.task_id]||{};return[t.task_date||'',t.employee_name||'',t.task_name||'',x.sku,x.qty]})];
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(taskRows),'任务历史');
+ XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(itemRows),'SKU明细');
+ XLSX.writeFile(wb,'仓库历史_已选_'+new Date().toISOString().slice(0,10)+'.xlsx');
+ $('status').textContent=`导出完成：${selectedTasks.length} 个任务`;
+}
+(async()=>{const {data:{session}}=await sb.auth.getSession();if(session)showApp()})();
+</script>
+</body>
+</html>
