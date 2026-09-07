@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1180px;margin:auto;padding:22px}.card{background:#151515;border:1px solid #262626;border-radius:16px;padding:16px;margin-bottom:14px}h1{margin:0 0 6px;font-size:24px}.muted{color:#999;font-size:13px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}input,button{font:inherit;border-radius:11px} input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:7px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:inline-grid;place-content:center;cursor:pointer;vertical-align:middle;transition:all .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}input[type=checkbox]::before{content:"✓";font-size:14px;line-height:1;font-weight:900;color:#0b0b0b;transform:scale(0);opacity:0;transition:all .16s ease}input[type=checkbox]:hover{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.1)}input[type=checkbox]:checked{background:rgba(255,255,255,.88);border-color:rgba(255,255,255,.95);box-shadow:0 0 0 4px rgba(255,255,255,.06)}input[type=checkbox]:checked::before{transform:scale(1);opacity:1}tbody tr{transition:background .18s ease,box-shadow .18s ease}tbody tr:has(.taskPick:checked){background:rgba(255,255,255,.045);box-shadow:inset 3px 0 0 rgba(255,255,255,.55)}input{width:100%;background:#202020;color:#fff;border:1px solid #333;padding:11px}button{border:0;padding:11px 14px;font-weight:800;background:#fff;color:#000}.dark{background:#2a2a2a;color:#fff}.red{background:#5a1c1c;color:#ffc4c4}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.hidden{display:none!important}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #292929;font-size:13px}th{color:#aaa;position:sticky;top:0;background:#151515}.num{text-align:right}.pill{display:inline-block;background:#242424;border-radius:999px;padding:4px 8px}.details{background:#101010;padding:10px}.details table{min-width:500px}.ok{color:#83ff9e}.err{color:#ff9a9a}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1180px;margin:auto;padding:22px}.card{background:#151515;border:1px solid #262626;border-radius:16px;padding:16px;margin-bottom:14px}h1{margin:0 0 6px;font-size:24px}.muted{color:#999;font-size:13px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}input,button{font:inherit;border-radius:11px} input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:7px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:inline-grid;place-content:center;cursor:pointer;vertical-align:middle;transition:all .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}input[type=checkbox]::before{content:"✓";font-size:14px;line-height:1;font-weight:900;color:#0b0b0b;transform:scale(0);opacity:0;transition:all .16s ease}input[type=checkbox]:hover{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.1)}input[type=checkbox]:checked{background:rgba(255,255,255,.88);border-color:rgba(255,255,255,.95);box-shadow:0 0 0 4px rgba(255,255,255,.06)}input[type=checkbox]:checked::before{transform:scale(1);opacity:1}tbody tr{transition:background .18s ease,box-shadow .18s ease}tbody tr:has(.taskPick:checked){background:rgba(255,255,255,.045);box-shadow:inset 3px 0 0 rgba(255,255,255,.55)}input{width:100%;background:#202020;color:#fff;border:1px solid #333;padding:11px}button{border:0;padding:11px 14px;font-weight:800;background:#fff;color:#000}.dark{background:#2a2a2a;color:#fff}.red{background:#5a1c1c;color:#ffc4c4}.xbtn{background:#3a1616;color:#ffb6b6;padding:7px 10px;border:1px solid #6a2929;min-width:38px}.copybtn{background:#232323;color:#fff;padding:7px 10px;border:1px solid #3a3a3a}.copybtn:hover,.xbtn:hover,.red:hover{filter:brightness(1.18)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.hidden{display:none!important}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #292929;font-size:13px}th{color:#aaa;position:sticky;top:0;background:#151515}.num{text-align:right}.pill{display:inline-block;background:#242424;border-radius:999px;padding:4px 8px}.details{background:#101010;padding:10px}.details table{min-width:500px}.ok{color:#83ff9e}.err{color:#ff9a9a}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -37,6 +37,7 @@
         <button class="dark" onclick="selectAllVisible()">全选</button>
         <button class="dark" onclick="clearSelection()">取消全选</button>
         <button class="dark" onclick="exportSelected()">导出已勾选 Excel</button>
+        <button class="red" onclick="deleteAllHistory()">全部删除</button>
         <button class="red" onclick="logout()">退出</button>
       </div>
       <div id="status" class="muted" style="margin-top:10px"></div>
@@ -87,7 +88,7 @@ function renderTasks(){
  if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
  currentTasks.forEach(t=>{
    const tr=document.createElement('tr');
-   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}</td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看 SKU</button></td>`;
+   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}</td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看 SKU</button><button class="copybtn" onclick="copyTask('${t.id}')">复制</button><button class="xbtn" title="删除这条历史" onclick="deleteTask('${t.id}','${esc(t.task_name||'')}')">✕</button></div></td>`;
    tb.appendChild(tr);
    const detail=document.createElement('tr');detail.id='d_'+t.id;detail.className='hidden';detail.innerHTML='<td colspan="8" class="details"><div class="muted">读取 SKU…</div></td>';tb.appendChild(detail);
  });
@@ -109,6 +110,80 @@ function updateSelectAllState(){
  if(!all)return; all.checked=boxes.length>0&&checked===boxes.length; all.indeterminate=checked>0&&checked<boxes.length;
  $('status').textContent=`共 ${currentTasks.length} 个任务，已勾选 ${checked} 个`;
 }
+
+
+async function copyTask(id){
+ const t=currentTasks.find(x=>x.id===id);
+ if(!t)return alert('找不到这条历史记录');
+ $('status').className='muted';$('status').textContent='正在读取 SKU 明细…';
+ const {data,error}=await sb.from('task_items').select('sku,qty').eq('task_id',id).order('sku');
+ if(error){$('status').className='err';$('status').textContent='复制失败：'+error.message;return}
+ const lines=[
+   `日期：${t.task_date||''}`,
+   `员工：${t.employee_name||''}`,
+   `任务名称：${t.task_name||''}`,
+   `SKU种类：${t.sku_types??0}`,
+   `总数量：${t.total_qty??0}`,
+   '',
+   'SKU 明细：',
+   ...(data||[]).map(x=>`${x.sku}\t${x.qty}`)
+ ];
+ const text=lines.join('\n');
+ try{
+   await navigator.clipboard.writeText(text);
+   $('status').className='ok';$('status').textContent='已复制到剪贴板';
+   setTimeout(()=>{
+     if($('status').textContent==='已复制到剪贴板'){
+       $('status').className='muted';
+       $('status').textContent=`共 ${currentTasks.length} 个任务`;
+     }
+   },1800);
+ }catch(e){
+   const ta=document.createElement('textarea');
+   ta.value=text;
+   ta.style.position='fixed';ta.style.opacity='0';
+   document.body.appendChild(ta);
+   ta.select();
+   const ok=document.execCommand('copy');
+   ta.remove();
+   if(ok){
+     $('status').className='ok';$('status').textContent='已复制到剪贴板';
+   }else{
+     $('status').className='err';$('status').textContent='复制失败，请重试';
+   }
+ }
+}
+
+async function deleteTask(id,taskName){
+ const label=taskName?`「${taskName}」`:'这条历史记录';
+ if(!confirm(`确定删除 ${label} 吗？\n\n删除后无法恢复。`))return;
+ $('status').textContent='正在删除…';
+ // Delete child rows first so this also works even if FK cascade/RLS behavior differs.
+ const r1=await sb.from('task_items').delete().eq('task_id',id);
+ if(r1.error){$('status').textContent='删除失败：'+r1.error.message;$('status').className='err';return}
+ const r2=await sb.from('tasks').delete().eq('id',id);
+ if(r2.error){$('status').textContent='删除失败：'+r2.error.message;$('status').className='err';return}
+ $('status').className='muted';$('status').textContent='已删除';
+ await loadTasks();
+}
+
+async function deleteAllHistory(){
+ if(!confirm('确定要删除【全部历史记录】吗？\n\n这会删除所有任务和 SKU 明细，无法恢复。'))return;
+ const code=prompt('这是危险操作。\n请输入 DELETE ALL 确认全部删除：');
+ if(code!=='DELETE ALL')return alert('已取消，没有删除任何数据。');
+
+ $('status').className='muted';$('status').textContent='正在删除全部历史…';
+
+ // First remove all child rows, then all tasks.
+ const r1=await sb.from('task_items').delete().not('id','is',null);
+ if(r1.error){$('status').textContent='全部删除失败：'+r1.error.message;$('status').className='err';return}
+ const r2=await sb.from('tasks').delete().not('id','is',null);
+ if(r2.error){$('status').textContent='全部删除失败：'+r2.error.message;$('status').className='err';return}
+
+ $('status').className='muted';$('status').textContent='全部历史已删除';
+ await loadTasks();
+}
+
 async function exportSelected(){
  const ids=selectedIds();
  if(!ids.length)return alert('请先勾选需要导出的任务');
