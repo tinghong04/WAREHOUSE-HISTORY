@@ -118,7 +118,7 @@ async function toggleDetails(id,btn){
  }else{
    photosHtml='<div class="muted" style="margin-top:14px">这个任务没有单号照片</div>';
  }
- cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>\`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPackage('${id}','${encodeURIComponent(x.sku)}')">复制单号+照片</button></td></tr>\`).join('')+'</tbody></table>'+photosHtml;
+ cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPackage('${id}','${encodeURIComponent(x.sku)}')">复制单号+照片</button></td></tr>`).join('')+'</tbody></table>'+photosHtml;
 }
 async function copySkuPackage(taskId,encodedSku){
  const sku=decodeURIComponent(encodedSku);
