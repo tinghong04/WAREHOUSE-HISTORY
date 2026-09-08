@@ -131,7 +131,7 @@ async function copySkuTogether(taskId,encodedSku){
    const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!png)throw new Error('Image conversion failed');
    const dataUrl=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(png)});
    const text='单号：'+sku;
-   const html='<div><p>'+esc(text)+'</p><img src="'+dataUrl+'" alt="'+esc(text)+'"></div>';
+   const html='<div><img src="'+dataUrl+'" alt="'+esc(text)+'"><p>'+esc(text)+'</p></div>';
    await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([text],{type:'text/plain'}),'text/html':new Blob([html],{type:'text/html'})})]);
    $('status').className='ok';$('status').textContent='已复制单号和原始照片';
  }catch(e){console.error(e);$('status').className='err';$('status').textContent='此软件不支持组合复制，请用两个独立按钮'}
