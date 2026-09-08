@@ -88,7 +88,7 @@ function renderTasks(){
  if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
  currentTasks.forEach(t=>{
    const tr=document.createElement('tr');
-   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}</td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button><button class="copybtn" onclick="copyTask('${t.id}')">复制</button><button class="xbtn" title="删除这条历史" onclick="deleteTask('${t.id}','${esc(t.task_name||'')}')">✕</button></div></td>`;
+   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')} <span class="pill">${t.task_content==="order"?"扫单":"点货"}</span></td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button>${t.task_content==="order"?"":`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button>`}<button class="xbtn" title="删除这条历史" onclick="deleteTask('${t.id}','${esc(t.task_name||'')}')">✕</button></div></td>`;
    tb.appendChild(tr);
    const detail=document.createElement('tr');detail.id='d_'+t.id;detail.className='hidden';detail.innerHTML='<td colspan="8" class="details"><div class="muted">读取 SKU…</div></td>';tb.appendChild(detail);
  });
@@ -97,10 +97,10 @@ async function toggleDetails(id,btn){
  const row=$('d_'+id);if(!row.classList.contains('hidden')){row.classList.add('hidden');btn.textContent='查看明细';return}
  row.classList.remove('hidden');btn.textContent='收起';
  const cell=row.querySelector('td');cell.innerHTML='<div class="muted">读取 SKU 和单号照片…</div>';
- const [itemsResult,photosResult]=await Promise.all([
-   sb.from('task_items').select('sku,qty').eq('task_id',id).order('sku'),
-   sb.from('task_order_photos').select('order_no,storage_path,captured_at').eq('task_id',id).order('captured_at')
- ]);
+ const task=currentTasks.find(x=>x.id===id);
+ const isOrder=task?.task_content==="order";
+ const itemsResult=await sb.from('task_items').select('sku,qty').eq('task_id',id).order('sku');
+ const photosResult=isOrder?await sb.from('task_order_photos').select('order_no,storage_path,captured_at').eq('task_id',id).order('captured_at'):{data:[],error:null};
  if(itemsResult.error){cell.innerHTML='<div class="err">读取失败：'+esc(itemsResult.error.message)+'</div>';return}
  let photosHtml='';
  if(photosResult.error){
