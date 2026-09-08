@@ -30,6 +30,7 @@
         <input id="dateTo" type="date" title="结束日期">
         <input id="employee" placeholder="员工姓名">
         <input id="task" placeholder="任务名称">
+        <input id="skuSearch" placeholder="搜索 SKU / 单号" onkeydown="if(event.key==='Enter')loadTasks()">
       </div>
       <div class="actions">
         <button onclick="loadTasks()">查询</button>
@@ -37,6 +38,7 @@
         <button class="dark" onclick="selectAllVisible()">全选</button>
         <button class="dark" onclick="clearSelection()">取消全选</button>
         <button class="dark" onclick="exportSelected()">导出已勾选 Excel</button>
+        <button class="red" onclick="deleteSelected()">删除已勾选</button>
         <button class="red" onclick="deleteAllHistory()">全部删除</button>
         <button class="red" onclick="logout()">退出</button>
       </div>
@@ -68,7 +70,7 @@ async function logout(){await sb.auth.signOut();location.reload()}
 async function showApp(){
  $('loginCard').classList.add('hidden');$('app').classList.remove('hidden');await loadTasks();
 }
-async function clearFilters(){['dateFrom','dateTo','employee','task'].forEach(id=>$(id).value='');await loadTasks()}
+async function clearFilters(){['dateFrom','dateTo','employee','task','skuSearch'].forEach(id=>$(id).value='');await loadTasks()}
 
 async function loadTasks(){
  $('status').textContent='读取中…';
@@ -79,7 +81,15 @@ async function loadTasks(){
  if($('task').value.trim())q=q.ilike('task_name','%'+$('task').value.trim()+'%');
  const {data,error}=await q;
  if(error){$('status').textContent='读取失败：'+error.message;$('status').className='err';return}
- currentTasks=data||[];$('status').className='muted';$('status').textContent=`共 ${currentTasks.length} 个任务`;
+ currentTasks=data||[];
+ const skuKeyword=$('skuSearch').value.trim();
+ if(skuKeyword){
+   const {data:matches,error:matchError}=await sb.from('task_items').select('task_id').ilike('sku','%'+skuKeyword+'%');
+   if(matchError){$('status').textContent='SKU/单号搜索失败：'+matchError.message;$('status').className='err';return}
+   const ids=new Set((matches||[]).map(x=>x.task_id));
+   currentTasks=currentTasks.filter(x=>ids.has(x.id));
+ }
+ $('status').className='muted';$('status').textContent=`共 ${currentTasks.length} 个任务`;
  renderTasks();
 }
 function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
@@ -213,17 +223,31 @@ async function copyTask(id){
  }
 }
 
+async function deleteTasks(ids){
+  $('status').className='muted';$('status').textContent='正在删除…';
+  const {data:photos,error:photoReadError}=await sb.from('task_order_photos').select('storage_path').in('task_id',ids);
+  if(photoReadError){$('status').textContent='删除失败（读取照片）：'+photoReadError.message;$('status').className='err';return false}
+  const r0=await sb.from('task_order_photos').delete().in('task_id',ids);
+  if(r0.error){$('status').textContent='删除失败（照片记录）：'+r0.error.message;$('status').className='err';return false}
+  const r1=await sb.from('task_items').delete().in('task_id',ids);
+  if(r1.error){$('status').textContent='删除失败（SKU 明细）：'+r1.error.message;$('status').className='err';return false}
+  const r2=await sb.from('tasks').delete().in('id',ids);
+  if(r2.error){$('status').textContent='删除失败（任务）：'+r2.error.message;$('status').className='err';return false}
+  const paths=(photos||[]).map(x=>x.storage_path).filter(Boolean);
+  if(paths.length){const sr=await sb.storage.from('task-order-photos').remove(paths);if(sr.error)console.warn('照片文件清理失败：',sr.error.message)}
+  $('status').className='muted';$('status').textContent='已删除 '+ids.length+' 条任务';
+  await loadTasks();return true;
+}
+async function deleteSelected(){
+ const ids=selectedIds();
+ if(!ids.length)return alert('请先勾选需要删除的任务');
+ if(!confirm('确定删除已勾选的 '+ids.length+' 条任务吗？\n\n相关 SKU 明细和照片也会一并删除，无法恢复。'))return;
+ await deleteTasks(ids);
+}
 async function deleteTask(id,taskName){
  const label=taskName?`「${taskName}」`:'这条历史记录';
  if(!confirm(`确定删除 ${label} 吗？\n\n删除后无法恢复。`))return;
- $('status').textContent='正在删除…';
- // Delete child rows first so this also works even if FK cascade/RLS behavior differs.
- const r1=await sb.from('task_items').delete().eq('task_id',id);
- if(r1.error){$('status').textContent='删除失败：'+r1.error.message;$('status').className='err';return}
- const r2=await sb.from('tasks').delete().eq('id',id);
- if(r2.error){$('status').textContent='删除失败：'+r2.error.message;$('status').className='err';return}
- $('status').className='muted';$('status').textContent='已删除';
- await loadTasks();
+ await deleteTasks([id]);
 }
 
 async function deleteAllHistory(){
