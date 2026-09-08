@@ -120,7 +120,7 @@ async function toggleDetails(id,btn){
  }
  cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPhoto('${id}','${encodeURIComponent(x.sku)}')">复制照片</button> <button class="copybtn sku-copy" onclick="copySkuNumber('${encodeURIComponent(x.sku)}')">复制单号</button>${isOrder?` <button class="copybtn sku-copy" onclick="copySkuTogether('${id}','${encodeURIComponent(x.sku)}')">复制照片+单号</button>`:""}</td></tr>`).join('')+'</tbody></table>'+photosHtml;
 }
-async async function copySkuTogether(taskId,encodedSku){
+async function copySkuTogether(taskId,encodedSku){
  const sku=decodeURIComponent(encodedSku);
  const photo=(taskPhotosByTask[taskId]||[]).find(x=>String(x.order_no)===String(sku)&&x.url);
  if(!photo){$('status').className='err';$('status').textContent='这个单号没有已保存的照片';return}
