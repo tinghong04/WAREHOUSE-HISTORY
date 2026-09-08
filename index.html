@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1180px;margin:auto;padding:22px}.card{background:#151515;border:1px solid #262626;border-radius:16px;padding:16px;margin-bottom:14px}h1{margin:0 0 6px;font-size:24px}.muted{color:#999;font-size:13px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}input,button{font:inherit;border-radius:11px} input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:7px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:inline-grid;place-content:center;cursor:pointer;vertical-align:middle;transition:all .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}input[type=checkbox]::before{content:"✓";font-size:14px;line-height:1;font-weight:900;color:#0b0b0b;transform:scale(0);opacity:0;transition:all .16s ease}input[type=checkbox]:hover{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.1)}input[type=checkbox]:checked{background:rgba(255,255,255,.88);border-color:rgba(255,255,255,.95);box-shadow:0 0 0 4px rgba(255,255,255,.06)}input[type=checkbox]:checked::before{transform:scale(1);opacity:1}tbody tr{transition:background .18s ease,box-shadow .18s ease}tbody tr:has(.taskPick:checked){background:rgba(255,255,255,.045);box-shadow:inset 3px 0 0 rgba(255,255,255,.55)}input{width:100%;background:#202020;color:#fff;border:1px solid #333;padding:11px}button{border:0;padding:11px 14px;font-weight:800;background:#fff;color:#000}.dark{background:#2a2a2a;color:#fff}.red{background:#5a1c1c;color:#ffc4c4}.xbtn{background:#3a1616;color:#ffb6b6;padding:7px 10px;border:1px solid #6a2929;min-width:38px}.copybtn{background:#232323;color:#fff;padding:7px 10px;border:1px solid #3a3a3a}.copybtn:hover,.xbtn:hover,.red:hover{filter:brightness(1.18)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.hidden{display:none!important}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #292929;font-size:13px}th{color:#aaa;position:sticky;top:0;background:#151515}.num{text-align:right}.pill{display:inline-block;background:#242424;border-radius:999px;padding:4px 8px}.details{background:#101010;padding:10px}.details table{min-width:500px}.order-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:16px}.order-photo{background:#181818;border:1px solid #303030;border-radius:12px;overflow:hidden}.order-photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#222}.order-photo b{display:block;padding:9px 10px 2px;word-break:break-word}.order-photo span{display:block;padding:0 10px 10px;color:#999;font-size:12px}.ok{color:#83ff9e}.err{color:#ff9a9a}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;background:#0b0b0b;color:#fff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}.wrap{max-width:1180px;margin:auto;padding:22px}.card{background:#151515;border:1px solid #262626;border-radius:16px;padding:16px;margin-bottom:14px}h1{margin:0 0 6px;font-size:24px}.muted{color:#999;font-size:13px}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}input,button{font:inherit;border-radius:11px} input[type=checkbox]{appearance:none;-webkit-appearance:none;width:22px;height:22px;border-radius:7px;border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.06);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);display:inline-grid;place-content:center;cursor:pointer;vertical-align:middle;transition:all .18s ease;box-shadow:inset 0 0 0 1px rgba(255,255,255,.03)}input[type=checkbox]::before{content:"✓";font-size:14px;line-height:1;font-weight:900;color:#0b0b0b;transform:scale(0);opacity:0;transition:all .16s ease}input[type=checkbox]:hover{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.1)}input[type=checkbox]:checked{background:rgba(255,255,255,.88);border-color:rgba(255,255,255,.95);box-shadow:0 0 0 4px rgba(255,255,255,.06)}input[type=checkbox]:checked::before{transform:scale(1);opacity:1}tbody tr{transition:background .18s ease,box-shadow .18s ease}tbody tr:has(.taskPick:checked){background:rgba(255,255,255,.045);box-shadow:inset 3px 0 0 rgba(255,255,255,.55)}input{width:100%;background:#202020;color:#fff;border:1px solid #333;padding:11px}button{border:0;padding:11px 14px;font-weight:800;background:#fff;color:#000}.dark{background:#2a2a2a;color:#fff}.red{background:#5a1c1c;color:#ffc4c4}.xbtn{background:#3a1616;color:#ffb6b6;padding:7px 10px;border:1px solid #6a2929;min-width:38px}.copybtn{background:#232323;color:#fff;padding:7px 10px;border:1px solid #3a3a3a}.copybtn:hover,.xbtn:hover,.red:hover{filter:brightness(1.18)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.hidden{display:none!important}.tablewrap{overflow:auto}table{width:100%;border-collapse:collapse;min-width:900px}th,td{text-align:left;padding:10px 9px;border-bottom:1px solid #292929;font-size:13px}th{color:#aaa;position:sticky;top:0;background:#151515}.num{text-align:right}.pill{display:inline-block;background:#242424;border-radius:999px;padding:4px 8px}.details{background:#101010;padding:10px}.details table{min-width:500px}.order-photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-top:16px}.order-photo{background:#181818;border:1px solid #303030;border-radius:12px;overflow:hidden}.order-photo img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#222}.order-photo b{display:block;padding:9px 10px 2px;word-break:break-word}.order-photo span{display:block;padding:0 10px 10px;color:#999;font-size:12px}.sku-copy{padding:6px 9px;font-size:12px;white-space:nowrap}.ok{color:#83ff9e}.err{color:#ff9a9a}@media(max-width:760px){.grid{grid-template-columns:1fr 1fr}}@media(max-width:480px){.grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -55,7 +55,7 @@
 const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
 const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
-let currentTasks=[];
+let currentTasks=[], taskPhotosByTask={};
 const $=id=>document.getElementById(id);
 
 async function login(){
@@ -110,6 +110,7 @@ async function toggleDetails(id,btn){
      const {data,error}=await sb.storage.from('task-order-photos').createSignedUrl(photo.storage_path,3600);
      return {...photo,url:error?'':data?.signedUrl||''};
    }));
+   taskPhotosByTask[id]=signed;
    photosHtml='<h3 style="margin:18px 0 8px">单号照片</h3><div class="order-photo-grid">'+signed.map(photo=>
      '<div class="order-photo">'+(photo.url?'<a href="'+esc(photo.url)+'" target="_blank" rel="noopener"><img src="'+esc(photo.url)+'" alt="单号 '+esc(photo.order_no)+'"></a>':'<div class="muted" style="padding:12px">照片链接失效</div>')+
      '<b>单号：'+esc(photo.order_no)+'</b><span>'+new Date(photo.captured_at).toLocaleString()+'</span></div>'
@@ -117,7 +118,40 @@ async function toggleDetails(id,btn){
  }else{
    photosHtml='<div class="muted" style="margin-top:14px">这个任务没有单号照片</div>';
  }
- cell.innerHTML='<table><thead><tr><th>SKU</th><th class="num">数量</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td></tr>`).join('')+'</tbody></table>'+photosHtml;
+ cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>\`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPackage('${id}','${encodeURIComponent(x.sku)}')">复制单号+照片</button></td></tr>\`).join('')+'</tbody></table>'+photosHtml;
+}
+async function copySkuPackage(taskId,encodedSku){
+ const sku=decodeURIComponent(encodedSku);
+ const photos=(taskPhotosByTask[taskId]||[]).filter(photo=>String(photo.order_no)===String(sku)&&photo.url);
+ const text='单号：'+sku;
+ if(!photos.length){
+   try{await navigator.clipboard.writeText(text);$('status').className='ok';$('status').textContent='已复制单号；该单号没有已保存的照片'}catch(e){alert(text)}
+   return;
+ }
+ $('status').className='muted';$('status').textContent='正在制作单号照片…';
+ try{
+   const images=await Promise.all(photos.map(async photo=>{
+     const response=await fetch(photo.url);if(!response.ok)throw new Error('Photo download failed');
+     const blob=await response.blob();
+     if('createImageBitmap' in window)return createImageBitmap(blob);
+     return await new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(blob);image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};image.onerror=reject;image.src=url});
+   }));
+   const cols=images.length>1?2:1,cellW=420,cellH=300,pad=18,headerH=106,rows=Math.ceil(images.length/cols),canvas=document.createElement('canvas');
+   canvas.width=cols*cellW+(cols+1)*pad;canvas.height=headerH+rows*cellH+(rows+1)*pad;
+   const ctx=canvas.getContext('2d');ctx.fillStyle='#101010';ctx.fillRect(0,0,canvas.width,canvas.height);
+   ctx.fillStyle='#fff';ctx.font='bold 34px sans-serif';ctx.fillText('单号：'+sku,pad,48);ctx.fillStyle='#9ca3af';ctx.font='22px sans-serif';ctx.fillText('照片 '+images.length+' 张',pad,80);
+   images.forEach((image,index)=>{const x=pad+(index%cols)*(cellW+pad),y=headerH+pad+Math.floor(index/cols)*(cellH+pad),scale=Math.max(cellW/image.width,cellH/image.height),w=image.width*scale,h=image.height*scale;ctx.save();ctx.beginPath();ctx.rect(x,y,cellW,cellH);ctx.clip();ctx.drawImage(image,x+(cellW-w)/2,y+(cellH-h)/2,w,h);ctx.restore()});
+   const imageBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!imageBlob)throw new Error('Image creation failed');
+   if(navigator.clipboard?.write&&window.ClipboardItem){
+     await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([text],{type:'text/plain'}),'image/png':imageBlob})]);
+     $('status').className='ok';$('status').textContent='已复制单号和照片，可直接粘贴';
+   }else{
+     await navigator.clipboard.writeText(text+'\n照片：'+photos.map(p=>p.url).join('\n'));$('status').className='ok';$('status').textContent='已复制单号和临时照片链接';
+   }
+ }catch(e){
+   console.error(e);
+   try{await navigator.clipboard.writeText(text+'\n照片：'+photos.map(p=>p.url).join('\n'));$('status').className='ok';$('status').textContent='已复制单号和临时照片链接'}catch(x){$('status').className='err';$('status').textContent='复制失败，请重试'}
+ }
 }
 function selectedIds(){return [...document.querySelectorAll('.taskPick:checked')].map(x=>x.dataset.id)}
 function toggleSelectAll(checked){document.querySelectorAll('.taskPick').forEach(x=>x.checked=checked);updateSelectAllState()}
