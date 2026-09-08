@@ -118,43 +118,30 @@ async function toggleDetails(id,btn){
  }else{
    photosHtml='<div class="muted" style="margin-top:14px">这个任务没有单号照片</div>';
  }
- cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPackage('${id}','${encodeURIComponent(x.sku)}')">复制单号+照片</button></td></tr>`).join('')+'</tbody></table>'+photosHtml;
+ cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPhoto('${id}','${encodeURIComponent(x.sku)}')">复制照片</button> <button class="copybtn sku-copy" onclick="copySkuNumber('${encodeURIComponent(x.sku)}')">复制单号</button></td></tr>`).join('')+'</tbody></table>'+photosHtml;
 }
-async function copySkuPackage(taskId,encodedSku){
+async function copySkuNumber(encodedSku){
+ const text='单号：'+decodeURIComponent(encodedSku);
+ navigator.clipboard.writeText(text).then(()=>{$('status').className='ok';$('status').textContent='已复制单号'}).catch(()=>alert(text));
+}
+async function copySkuPhoto(taskId,encodedSku){
  const sku=decodeURIComponent(encodedSku);
  const photos=(taskPhotosByTask[taskId]||[]).filter(photo=>String(photo.order_no)===String(sku)&&photo.url);
- const text='单号：'+sku;
- if(!photos.length){
-   try{await navigator.clipboard.writeText(text);$('status').className='ok';$('status').textContent='已复制单号；该单号没有已保存的照片'}catch(e){alert(text)}
-   return;
- }
- $('status').className='muted';$('status').textContent='正在制作单号照片…';
+ if(!photos.length){$('status').className='err';$('status').textContent='这个单号没有已保存的照片';return}
+ $('status').className='muted';$('status').textContent='正在复制原始照片…';
  try{
-   const blobs=await Promise.all(photos.map(async photo=>{
-     const response=await fetch(photo.url);if(!response.ok)throw new Error('Photo download failed');
-     return response.blob();
-   }));
-   let imageBlob=blobs[0];
-   if(blobs.length>1){
-     const images=await Promise.all(blobs.map(async blob=>{
-       if('createImageBitmap' in window)return createImageBitmap(blob);
-       return await new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(blob);image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};image.onerror=reject;image.src=url});
-     }));
-     const cols=2,cellW=480,cellH=360,pad=18,rows=Math.ceil(images.length/cols),canvas=document.createElement('canvas');
-     canvas.width=cols*cellW+(cols+1)*pad;canvas.height=rows*cellH+(rows+1)*pad;
-     const ctx=canvas.getContext('2d');ctx.fillStyle='#101010';ctx.fillRect(0,0,canvas.width,canvas.height);
-     images.forEach((image,index)=>{const x=pad+(index%cols)*(cellW+pad),y=pad+Math.floor(index/cols)*(cellH+pad),scale=Math.min(cellW/image.width,cellH/image.height),w=image.width*scale,h=image.height*scale;ctx.drawImage(image,x+(cellW-w)/2,y+(cellH-h)/2,w,h)});
-     imageBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!imageBlob)throw new Error('Image creation failed');
-   }
-   if(navigator.clipboard?.write&&window.ClipboardItem){
-     await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([text],{type:'text/plain'}),'image/png':imageBlob})]);
-     $('status').className='ok';$('status').textContent='已复制完整照片；单号文字也已复制';
-   }else{
-     await navigator.clipboard.writeText(text+'\n照片：'+photos.map(p=>p.url).join('\n'));$('status').className='ok';$('status').textContent='已复制单号和临时照片链接';
-   }
+   const response=await fetch(photos[0].url);
+   if(!response.ok)throw new Error('Photo download failed');
+   const source=await response.blob();
+   const image=await new Promise((resolve,reject)=>{const url=URL.createObjectURL(source),img=new Image();img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};img.onerror=reject;img.src=url});
+   const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+   canvas.getContext('2d').drawImage(image,0,0);
+   const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!png)throw new Error('Image conversion failed');
+   if(!navigator.clipboard?.write||!window.ClipboardItem)throw new Error('Image clipboard unavailable');
+   await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);
+   $('status').className='ok';$('status').textContent='已复制原始照片';
  }catch(e){
-   console.error(e);
-   try{await navigator.clipboard.writeText(text+'\n照片：'+photos.map(p=>p.url).join('\n'));$('status').className='ok';$('status').textContent='已复制单号和临时照片链接'}catch(x){$('status').className='err';$('status').textContent='复制失败，请重试'}
+   console.error(e);$('status').className='err';$('status').textContent='此浏览器不支持复制图片，请长按照片保存';
  }
 }
 function selectedIds(){return [...document.querySelectorAll('.taskPick:checked')].map(x=>x.dataset.id)}
