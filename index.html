@@ -118,9 +118,25 @@ async function toggleDetails(id,btn){
  }else{
    photosHtml='<div class="muted" style="margin-top:14px">这个任务没有单号照片</div>';
  }
- cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPhoto('${id}','${encodeURIComponent(x.sku)}')">复制照片</button> <button class="copybtn sku-copy" onclick="copySkuNumber('${encodeURIComponent(x.sku)}')">复制单号</button></td></tr>`).join('')+'</tbody></table>'+photosHtml;
+ cell.innerHTML='<table><thead><tr><th>SKU / 单号</th><th class="num">数量</th><th>操作</th></tr></thead><tbody>'+(itemsResult.data||[]).map(x=>`<tr><td>${esc(x.sku)}</td><td class="num">${x.qty}</td><td><button class="copybtn sku-copy" onclick="copySkuPhoto('${id}','${encodeURIComponent(x.sku)}')">复制照片</button> <button class="copybtn sku-copy" onclick="copySkuNumber('${encodeURIComponent(x.sku)}')">复制单号</button>${isOrder?` <button class="copybtn sku-copy" onclick="copySkuTogether('${id}','${encodeURIComponent(x.sku)}')">复制照片+单号</button>`:""}</td></tr>`).join('')+'</tbody></table>'+photosHtml;
 }
-async function copySkuNumber(encodedSku){
+async async function copySkuTogether(taskId,encodedSku){
+ const sku=decodeURIComponent(encodedSku);
+ const photo=(taskPhotosByTask[taskId]||[]).find(x=>String(x.order_no)===String(sku)&&x.url);
+ if(!photo){$('status').className='err';$('status').textContent='这个单号没有已保存的照片';return}
+ try{
+   const source=await (await fetch(photo.url)).blob();
+   const image=await new Promise((resolve,reject)=>{const url=URL.createObjectURL(source),img=new Image();img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};img.onerror=reject;img.src=url});
+   const canvas=document.createElement('canvas');canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;canvas.getContext('2d').drawImage(image,0,0);
+   const png=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!png)throw new Error('Image conversion failed');
+   const dataUrl=await new Promise(resolve=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.readAsDataURL(png)});
+   const text='单号：'+sku;
+   const html='<div><p>'+esc(text)+'</p><img src="'+dataUrl+'" alt="'+esc(text)+'"></div>';
+   await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([text],{type:'text/plain'}),'text/html':new Blob([html],{type:'text/html'}),'image/png':png})]);
+   $('status').className='ok';$('status').textContent='已复制照片和单号';
+ }catch(e){console.error(e);$('status').className='err';$('status').textContent='此软件不支持组合复制，请用两个独立按钮'}
+}
+function copySkuNumber(encodedSku){
  const text='单号：'+decodeURIComponent(encodedSku);
  navigator.clipboard.writeText(text).then(()=>{$('status').className='ok';$('status').textContent='已复制单号'}).catch(()=>alert(text));
 }
