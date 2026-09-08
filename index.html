@@ -130,17 +130,22 @@ async function copySkuPackage(taskId,encodedSku){
  }
  $('status').className='muted';$('status').textContent='正在制作单号照片…';
  try{
-   const images=await Promise.all(photos.map(async photo=>{
+   const blobs=await Promise.all(photos.map(async photo=>{
      const response=await fetch(photo.url);if(!response.ok)throw new Error('Photo download failed');
-     const blob=await response.blob();
-     if('createImageBitmap' in window)return createImageBitmap(blob);
-     return await new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(blob);image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};image.onerror=reject;image.src=url});
+     return response.blob();
    }));
-   const cols=images.length>1?2:1,cellW=480,cellH=360,pad=18,rows=Math.ceil(images.length/cols),canvas=document.createElement('canvas');
-   canvas.width=cols*cellW+(cols+1)*pad;canvas.height=rows*cellH+(rows+1)*pad;
-   const ctx=canvas.getContext('2d');ctx.fillStyle='#101010';ctx.fillRect(0,0,canvas.width,canvas.height);
-   images.forEach((image,index)=>{const x=pad+(index%cols)*(cellW+pad),y=pad+Math.floor(index/cols)*(cellH+pad),scale=Math.min(cellW/image.width,cellH/image.height),w=image.width*scale,h=image.height*scale;ctx.drawImage(image,x+(cellW-w)/2,y+(cellH-h)/2,w,h)});
-   const imageBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!imageBlob)throw new Error('Image creation failed');
+   let imageBlob=blobs[0];
+   if(blobs.length>1){
+     const images=await Promise.all(blobs.map(async blob=>{
+       if('createImageBitmap' in window)return createImageBitmap(blob);
+       return await new Promise((resolve,reject)=>{const image=new Image(),url=URL.createObjectURL(blob);image.onload=()=>{URL.revokeObjectURL(url);resolve(image)};image.onerror=reject;image.src=url});
+     }));
+     const cols=2,cellW=480,cellH=360,pad=18,rows=Math.ceil(images.length/cols),canvas=document.createElement('canvas');
+     canvas.width=cols*cellW+(cols+1)*pad;canvas.height=rows*cellH+(rows+1)*pad;
+     const ctx=canvas.getContext('2d');ctx.fillStyle='#101010';ctx.fillRect(0,0,canvas.width,canvas.height);
+     images.forEach((image,index)=>{const x=pad+(index%cols)*(cellW+pad),y=pad+Math.floor(index/cols)*(cellH+pad),scale=Math.min(cellW/image.width,cellH/image.height),w=image.width*scale,h=image.height*scale;ctx.drawImage(image,x+(cellW-w)/2,y+(cellH-h)/2,w,h)});
+     imageBlob=await new Promise(resolve=>canvas.toBlob(resolve,'image/png'));if(!imageBlob)throw new Error('Image creation failed');
+   }
    if(navigator.clipboard?.write&&window.ClipboardItem){
      await navigator.clipboard.write([new ClipboardItem({'text/plain':new Blob([text],{type:'text/plain'}),'image/png':imageBlob})]);
      $('status').className='ok';$('status').textContent='已复制完整照片；单号文字也已复制';
