@@ -98,7 +98,7 @@ function renderTasks(){
  if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
  currentTasks.forEach(t=>{
    const tr=document.createElement('tr');
-   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}${t.task_content==="inbound"&&t.batch_no?'<div class="muted" style="margin-top:3px">批次：'+esc(t.batch_no)+'</div>':''} <span class="pill">${t.task_content==="order"?"扫单":t.task_content==="inbound"?"入库":"点货"}</span></td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button>${t.task_content==="order"?`<button class="copybtn" onclick="copyOrderBatch('${t.id}')">复制批次物流单号</button>`:`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button>`}</div></td>`;
+   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}${t.customer_name?'<div class="muted" style="margin-top:3px">客户：'+esc(t.customer_name)+'</div>':''}${t.task_content==="inbound"&&t.batch_no?'<div class="muted" style="margin-top:3px">批次：'+esc(t.batch_no)+'</div>':''} <span class="pill">${t.task_content==="order"?"扫单":t.task_content==="inbound"?"入库":"点货"}</span></td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button>${t.task_content==="order"?`<button class="copybtn" onclick="copyOrderBatch('${t.id}')">复制批次物流单号</button>`:t.task_content==="inbound"?`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button><button class="copybtn" onclick="exportInboundReport('${t.id}')">导出入库记录</button>`:`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button>`}</div></td>`;
    tb.appendChild(tr);
    const detail=document.createElement('tr');detail.id='d_'+t.id;detail.className='hidden';detail.innerHTML='<td colspan="8" class="details"><div class="muted">读取 SKU…</div></td>';tb.appendChild(detail);
  });
@@ -279,6 +279,34 @@ async function deleteAllHistory(){
  await loadTasks();
 }
 
+async function exportInboundReport(id){
+ const task=currentTasks.find(x=>x.id===id);
+ if(!task)return;
+ $('status').className='muted';$('status').textContent='正在生成含照片的入库记录…';
+ const [{data:items,error:itemError},{data:photos,error:photoError}]=await Promise.all([
+   sb.from('task_items').select('sku,qty').eq('task_id',id).order('sku'),
+   sb.from('task_order_photos').select('order_no,storage_path,captured_at').eq('task_id',id).order('captured_at')
+ ]);
+ if(itemError||photoError){$('status').className='err';$('status').textContent='导出失败：'+(itemError||photoError).message;return}
+ const photoData=await Promise.all((photos||[]).map(async photo=>{
+   try{
+     const {data,error}=await sb.storage.from('task-order-photos').createSignedUrl(photo.storage_path,3600);
+     if(error||!data?.signedUrl)throw error||new Error('无法取得照片');
+     const response=await fetch(data.signedUrl);if(!response.ok)throw new Error('照片下载失败');
+     const blob=await response.blob();
+     const url=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)});
+     return {...photo,dataUrl:url};
+   }catch(e){return {...photo,dataUrl:'',error:e.message||'照片读取失败'}}
+ }));
+ const incoming=photoData.filter(x=>String(x.order_no||'').startsWith('入库照片'));
+ const exceptions=photoData.filter(x=>String(x.order_no||'').startsWith('异常：'));
+ const photoCards=list=>list.length?'<div class="photos">'+list.map(x=>'<figure>'+(x.dataUrl?'<img src="'+x.dataUrl+'">':'<div class="missing">照片读取失败</div>')+'<figcaption>'+esc(x.order_no||'')+'<br><small>'+esc(new Date(x.captured_at).toLocaleString())+'</small></figcaption></figure>').join('')+'</div>':'<p class="empty">没有照片</p>';
+ const skuRows=(items||[]).length?(items||[]).map(x=>'<tr><td>'+esc(x.sku)+'</td><td>'+esc(x.qty)+'</td></tr>').join(''):'<tr><td colspan="2">没有 SKU 明细</td></tr>';
+ const report='<!doctype html><html><head><meta charset="utf-8"><title>入库记录</title><style>body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#111;margin:28px;line-height:1.5}h1{margin:0 0 6px}h2{margin:28px 0 10px;border-bottom:2px solid #222;padding-bottom:6px}.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:680px}.meta div{padding:8px 10px;background:#f4f4f4;border-radius:6px}.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}figure{margin:0;border:1px solid #ddd;padding:8px;border-radius:8px;break-inside:avoid}img{display:block;width:100%;height:auto;max-height:560px;object-fit:contain;background:#f6f6f6}figcaption{font-weight:700;margin-top:7px;word-break:break-word}small,.empty{color:#666;font-weight:400}table{border-collapse:collapse;width:100%;max-width:680px}th,td{border:1px solid #bbb;padding:8px;text-align:left}th{background:#eee}.missing{height:150px;display:grid;place-items:center;color:#777;background:#f6f6f6}@media print{body{margin:14mm}h2{break-after:avoid}.photos{grid-template-columns:repeat(2,1fr)}}</style></head><body><h1>入库记录</h1><p>导出时间：'+esc(new Date().toLocaleString())+'</p><h2>1. 客户</h2><p>'+(task.customer_name?esc(task.customer_name):'未填写')+'</p><h2>2. 入库批次编号</h2><div class="meta"><div><b>批次：</b>'+esc(task.batch_no||'未填写')+'</div><div><b>日期：</b>'+esc(task.task_date||'')+'</div><div><b>员工：</b>'+esc(task.employee_name||'')+'</div><div><b>总数量：</b>'+esc(task.total_qty||0)+'</div></div><h2>3. 到货照片</h2>'+photoCards(incoming)+'<h2>4. SKU 数量</h2><table><thead><tr><th>SKU</th><th>数量</th></tr></thead><tbody>'+skuRows+'</tbody></table><h2>5. 异常件照片及备注</h2>'+photoCards(exceptions)+'</body></html>';
+ const blob=new Blob([report],{type:'text/html;charset=utf-8'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='入库记录_'+String(task.batch_no||task.task_date||'批次').replace(/[\\/:*?"<>|]/g,'_')+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+ $('status').className='ok';$('status').textContent='入库记录已导出，打开文件即可查看照片或打印为 PDF';
+}
 async function exportSelected(){
  const ids=selectedIds();
  if(!ids.length)return alert('请先勾选需要导出的任务');
