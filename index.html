@@ -86,6 +86,8 @@
 const SUPABASE_URL="https://brqurxainlsteygsqfcu.supabase.co";
 const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+// Task writer mirrors the phone app's anonymous sync client; the admin session remains used for history access.
+const taskWriteSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
 let currentTasks=[], taskPhotosByTask={};
 const $=id=>document.getElementById(id);
 
@@ -428,8 +430,8 @@ async function saveDeskTask(){
  const employee=$('deskEmployee').value.trim();if(!employee)return alert('请填写员工姓名');
  const row={id:deskUuid(),task_date:$('deskDate').value||new Date().toISOString().slice(0,10),employee_name:employee,customer_name:$('deskCustomer').value.trim()||null,task_name:$('deskTaskName').value.trim()||null,task_content:deskMode,total_qty:entries.reduce((sum,[,qty])=>sum+qty,0),sku_types:entries.length,device_id:'desktop'};
  $('deskStatus').className='muted';$('deskStatus').textContent='正在同步…';
- const first=await sb.from('tasks').insert(row);if(first.error){$('deskStatus').className='err';$('deskStatus').textContent='同步失败：'+first.error.message;return}
- const items=entries.map(([sku,qty])=>({task_id:row.id,sku,qty}));const second=await sb.from('task_items').insert(items);
+ const first=await taskWriteSb.from('tasks').insert(row);if(first.error){$('deskStatus').className='err';$('deskStatus').textContent='同步失败：'+first.error.message;return}
+ const items=entries.map(([sku,qty])=>({task_id:row.id,sku,qty}));const second=await taskWriteSb.from('task_items').insert(items);
  if(second.error){$('deskStatus').className='err';$('deskStatus').textContent='SKU 同步失败：'+second.error.message;return}
  localStorage.setItem('warehouse_desktop_employee',employee);localStorage.setItem('warehouse_desktop_customer',$('deskCustomer').value.trim());
  $('deskStatus').className='ok';$('deskStatus').textContent='同步成功，已写入历史记录。';deskCounts={};deskHistory=[];renderDeskTask();await loadTasks();(deskManual?$('deskSku'):$('deskScanner')).focus();
