@@ -42,6 +42,7 @@
           <input id="deskEmployee" placeholder="员工姓名">
           <input id="deskCustomer" placeholder="客户（可选）">
           <input id="deskTaskName" placeholder="任务名称（可选）">
+          <input id="deskBatchNo" class="hidden" placeholder="入库批次编号（必填）">
           <input id="deskDate" type="date">
         </div>
         <div class="work-note"><div class="muted">工作模式</div><div class="mode-row" style="margin-top:8px"><button id="deskCountMode" onclick="setDeskMode('count')">点货</button><button id="deskOrderMode" class="dark" onclick="setDeskMode('order')">扫单</button><button id="deskInboundMode" class="dark" onclick="setDeskMode('inbound')">入库</button></div></div>
@@ -298,48 +299,47 @@ async function deleteTask(id,taskName){
 }
 
 async function exportInboundReport(id,format="excel"){
- const task=currentTasks.find(x=>x.id===id);
- if(!task)return;
- $('status').className='muted';$('status').textContent='正在生成含照片的入库记录…';
+ const task=currentTasks.find(x=>x.id===id);if(!task)return;
+ const type=task.task_content||'count';
+ const title=type==='inbound'?'入库记录':type==='order'?'扫单记录':'库存盘点记录';
+ const isInbound=type==='inbound',isOrder=type==='order';
+ $('status').className='muted';$('status').textContent='正在生成完整记录…';
  const [{data:items,error:itemError},{data:photos,error:photoError}]=await Promise.all([
    sb.from('task_items').select('sku,qty').eq('task_id',id).order('sku'),
    sb.from('task_order_photos').select('order_no,storage_path,captured_at').eq('task_id',id).order('captured_at')
  ]);
  if(itemError||photoError){$('status').className='err';$('status').textContent='导出失败：'+(itemError||photoError).message;return}
- const photoData=await Promise.all((photos||[]).map(async photo=>{
-   try{
-     const {data,error}=await sb.storage.from('task-order-photos').createSignedUrl(photo.storage_path,3600);
-     if(error||!data?.signedUrl)throw error||new Error('无法取得照片');
-     const response=await fetch(data.signedUrl);if(!response.ok)throw new Error('照片下载失败');
-     const blob=await response.blob();
-     const url=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)});
-     return {...photo,dataUrl:url};
-   }catch(e){return {...photo,dataUrl:'',error:e.message||'照片读取失败'}}
- }));
+ const photoData=await Promise.all((photos||[]).map(async photo=>{try{
+   const {data,error}=await sb.storage.from('task-order-photos').createSignedUrl(photo.storage_path,3600);
+   if(error||!data?.signedUrl)throw error||new Error('无法取得照片');
+   const response=await fetch(data.signedUrl);if(!response.ok)throw new Error('照片下载失败');
+   const blob=await response.blob();const url=await new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=reject;reader.readAsDataURL(blob)});
+   return {...photo,dataUrl:url};
+ }catch(e){return {...photo,dataUrl:'',error:e.message||'照片读取失败'}}}));
  const incoming=photoData.filter(x=>String(x.order_no||'').startsWith('入库照片'));
  const exceptions=photoData.filter(x=>String(x.order_no||'').startsWith('异常：'));
- const photoCards=list=>list.length?'<div class="photos">'+list.map(x=>'<figure>'+(x.dataUrl?'<img src="'+x.dataUrl+'">':'<div class="missing">照片读取失败</div>')+'<figcaption>'+esc(x.order_no||'')+'<br><small>'+esc(new Date(x.captured_at).toLocaleString())+'</small></figcaption></figure>').join('')+'</div>':'<p class="empty">没有照片</p>';
- const skuRows=(items||[]).length?(items||[]).map(x=>'<tr><td>'+esc(x.sku)+'</td><td>'+esc(x.qty)+'</td></tr>').join(''):'<tr><td colspan="2">没有 SKU 明细</td></tr>';
- const report='<!doctype html><html><head><meta charset="utf-8"><title>入库记录</title><style>body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#111;margin:28px;line-height:1.5}h1{margin:0 0 6px}h2{margin:28px 0 10px;border-bottom:2px solid #222;padding-bottom:6px}.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:680px}.meta div{padding:8px 10px;background:#f4f4f4;border-radius:6px}.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}figure{margin:0;border:1px solid #ddd;padding:8px;border-radius:8px;break-inside:avoid}img{display:block;width:100%;height:auto;max-height:560px;object-fit:contain;background:#f6f6f6}figcaption{font-weight:700;margin-top:7px;word-break:break-word}small,.empty{color:#666;font-weight:400}table{border-collapse:collapse;width:100%;max-width:680px}th,td{border:1px solid #bbb;padding:8px;text-align:left}th{background:#eee}.missing{height:150px;display:grid;place-items:center;color:#777;background:#f6f6f6}@media print{body{margin:14mm}h2{break-after:avoid}.photos{grid-template-columns:repeat(2,1fr)}}</style></head><body><h1>入库记录</h1><p>导出时间：'+esc(new Date().toLocaleString())+'</p><h2>1. 客户</h2><p>'+(task.customer_name?esc(task.customer_name):'未填写')+'</p><h2>2. 入库批次编号</h2><div class="meta"><div><b>批次：</b>'+esc(task.batch_no||'未填写')+'</div><div><b>日期：</b>'+esc(task.task_date||'')+'</div><div><b>员工：</b>'+esc(task.employee_name||'')+'</div><div><b>总数量：</b>'+esc(task.total_qty||0)+'</div></div><h2>3. 到货照片</h2>'+photoCards(incoming)+'<h2>4. SKU 数量</h2><table><thead><tr><th>SKU</th><th>数量</th></tr></thead><tbody>'+skuRows+'</tbody></table><h2>5. 异常件照片及备注</h2>'+photoCards(exceptions)+'</body></html>';
+ const orderPhotos=photoData.filter(x=>!String(x.order_no||'').startsWith('入库照片')&&!String(x.order_no||'').startsWith('异常：'));
+ const photoCards=(list,empty='没有照片')=>list.length?'<div class="photos">'+list.map(x=>'<figure>'+(x.dataUrl?'<img src="'+x.dataUrl+'">':'<div class="missing">照片读取失败</div>')+'<figcaption>'+esc(x.order_no||'')+'<br><small>'+esc(new Date(x.captured_at).toLocaleString())+'</small></figcaption></figure>').join('')+'</div>':'<p class="empty">'+empty+'</p>';
+ const skuLabel=isOrder?'单号':'SKU',skuRows=(items||[]).length?(items||[]).map(x=>'<tr><td>'+esc(x.sku)+'</td><td>'+esc(x.qty)+'</td></tr>').join(''):'<tr><td colspan="2">没有明细</td></tr>';
+ const identifier=isInbound?task.batch_no:(task.task_name||'未填写');
+ const identifierLabel=isInbound?'入库批次编号':isOrder?'任务名称':'盘点任务';
+ const photoSections=isInbound?'<h2>3. 到货照片</h2>'+photoCards(incoming)+'<h2>4. SKU 数量</h2>__TABLE__<h2>5. 异常件照片及备注</h2>'+photoCards(exceptions):
+   isOrder?'<h2>3. 单号照片</h2>'+photoCards(orderPhotos)+'<h2>4. 单号清单</h2>__TABLE__':
+   '<h2>3. SKU 数量</h2>__TABLE__<h2>4. 异常件照片及备注</h2>'+photoCards(exceptions);
+ const table='<table><thead><tr><th>'+skuLabel+'</th><th>数量</th></tr></thead><tbody>'+skuRows+'</tbody></table>';
+ const report='<!doctype html><html><head><meta charset="utf-8"><title>'+title+'</title><style>body{font-family:Arial,"Microsoft YaHei",sans-serif;color:#111;margin:28px;line-height:1.5}h1{margin:0 0 6px;font-size:30px}h2{margin:28px 0 10px;border-bottom:2px solid #222;padding-bottom:6px}.meta{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-width:680px}.meta div{padding:8px 10px;background:#f4f4f4;border-radius:6px}.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}figure{margin:0;border:1px solid #ddd;padding:8px;border-radius:8px;break-inside:avoid}img{display:block;width:100%;height:auto;max-height:560px;object-fit:contain;background:#f6f6f6}figcaption{font-weight:700;margin-top:7px;word-break:break-word}small,.empty{color:#666;font-weight:400}table{border-collapse:collapse;width:100%;max-width:680px}th,td{border:1px solid #bbb;padding:8px;text-align:left}th{background:#eee}.missing{height:150px;display:grid;place-items:center;color:#777;background:#f6f6f6}@media print{body{margin:14mm}h2{break-after:avoid}.photos{grid-template-columns:repeat(2,1fr)}}</style></head><body><h1>'+title+'</h1><p>导出时间：'+esc(new Date().toLocaleString())+'</p><h2>1. 客户</h2><p>'+(task.customer_name?esc(task.customer_name):'未填写')+'</p><h2>2. '+identifierLabel+'</h2><div class="meta"><div><b>'+identifierLabel+'：</b>'+esc(identifier)+'</div><div><b>日期：</b>'+esc(task.task_date||'')+'</div><div><b>员工：</b>'+esc(task.employee_name||'')+'</div><div><b>总数量：</b>'+esc(task.total_qty||0)+'</div></div>'+photoSections.replace('__TABLE__',table)+'</body></html>';
+ const safeName=String(identifier||task.task_date||'记录').replace(/[\\/:*?"<>|]/g,'_');
  if(format==="pdf"){
-   $('status').className='muted';$('status').textContent='正在生成含照片的 PDF…';
+   $('status').className='muted';$('status').textContent='正在生成 PDF…';
    const frame=document.createElement('iframe');frame.style.cssText='position:fixed;left:-20000px;top:0;width:1240px;height:900px;border:0';document.body.appendChild(frame);
-   const doc=frame.contentDocument;doc.open();doc.write(report);doc.close();
-   await new Promise(resolve=>setTimeout(resolve,400));
+   const doc=frame.contentDocument;doc.open();doc.write(report);doc.close();await new Promise(resolve=>setTimeout(resolve,400));
    await Promise.all([...doc.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=img.onerror=resolve})));
    const canvas=await html2canvas(doc.body,{scale:1.5,backgroundColor:'#ffffff',useCORS:true,windowWidth:1240});
-   const {jsPDF}=window.jspdf;const pdf=new jsPDF('p','mm','a4'),pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight();
-   const pagePx=Math.floor(canvas.width*ph/pw);
-   for(let y=0,page=0;y<canvas.height;y+=pagePx,page++){
-     const part=document.createElement('canvas');part.width=canvas.width;part.height=Math.min(pagePx,canvas.height-y);part.getContext('2d').drawImage(canvas,0,y,canvas.width,part.height,0,0,canvas.width,part.height);
-     if(page)pdf.addPage();pdf.addImage(part.toDataURL('image/jpeg',.92),'JPEG',0,0,pw,part.height*pw/canvas.width);
-   }
-   pdf.save('入库记录_'+String(task.batch_no||task.task_date||'批次').replace(/[\\/:*?"<>|]/g,'_')+'.pdf');frame.remove();
-   $('status').className='ok';$('status').textContent='PDF 已下载';
+   const {jsPDF}=window.jspdf,pdf=new jsPDF('p','mm','a4'),pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),pagePx=Math.floor(canvas.width*ph/pw);
+   for(let y=0,page=0;y<canvas.height;y+=pagePx,page++){const part=document.createElement('canvas');part.width=canvas.width;part.height=Math.min(pagePx,canvas.height-y);part.getContext('2d').drawImage(canvas,0,y,canvas.width,part.height,0,0,canvas.width,part.height);if(page)pdf.addPage();pdf.addImage(part.toDataURL('image/jpeg',.92),'JPEG',0,0,pw,part.height*pw/canvas.width)}
+   pdf.save(title+'_'+safeName+'.pdf');frame.remove();$('status').className='ok';$('status').textContent='PDF 已下载';
  }else{
-   const blob=new Blob([report],{type:'application/vnd.ms-excel;charset=utf-8'});
-   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='入库记录_'+String(task.batch_no||task.task_date||'批次').replace(/[\\/:*?"<>|]/g,'_')+'.xls';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
-   $('status').className='ok';$('status').textContent='已导出完整 Excel 报告（含照片）';
+   const blob=new Blob([report],{type:'application/vnd.ms-excel;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=title+'_'+safeName+'.xls';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);$('status').className='ok';$('status').textContent='已导出完整 Excel 报告';
  }
 }
 async function exportTaskExcel(id){
@@ -402,6 +402,8 @@ function selectDesktopTab(tab){
 function setDeskMode(mode){
  deskMode=mode;
  [['count','deskCountMode'],['order','deskOrderMode'],['inbound','deskInboundMode']].forEach(([key,id])=>{$(id).classList.toggle('active',key===mode);$(id).classList.toggle('dark',key!==mode)});
+ $('deskBatchNo').classList.toggle('hidden',mode!=='inbound');
+ $('deskTaskName').classList.toggle('hidden',mode==='inbound');
  $('deskInputTitle').textContent=mode==='order'?'扫码枪 / 手动录入单号':mode==='inbound'?'入库 SKU 录入':'扫码枪 / 手动录入';
 }
 function toggleDeskInput(){
@@ -428,7 +430,9 @@ function resetDeskTask(){if(Object.keys(deskCounts).length&&!confirm('重置会�
 async function saveDeskTask(){
  const entries=Object.entries(deskCounts);if(!entries.length)return alert('请先扫描或录入至少一条 SKU / 单号');
  const employee=$('deskEmployee').value.trim();if(!employee)return alert('请填写员工姓名');
- const row={id:deskUuid(),task_date:$('deskDate').value||new Date().toISOString().slice(0,10),employee_name:employee,customer_name:$('deskCustomer').value.trim()||null,task_name:$('deskTaskName').value.trim()||null,task_content:deskMode,total_qty:entries.reduce((sum,[,qty])=>sum+qty,0),sku_types:entries.length,device_id:'desktop'};
+ const batchNo=$('deskBatchNo').value.trim();
+ if(deskMode==='inbound'&&!batchNo)return alert('入库请填写批次编号');
+ const row={id:deskUuid(),task_date:$('deskDate').value||new Date().toISOString().slice(0,10),employee_name:employee,customer_name:$('deskCustomer').value.trim()||null,task_name:deskMode==='inbound'?null:($('deskTaskName').value.trim()||null),task_content:deskMode,batch_no:deskMode==='inbound'?batchNo:null,total_qty:entries.reduce((sum,[,qty])=>sum+qty,0),sku_types:entries.length,device_id:'desktop'};
  $('deskStatus').className='muted';$('deskStatus').textContent='正在同步…';
  const first=await taskWriteSb.from('tasks').insert(row);if(first.error){$('deskStatus').className='err';$('deskStatus').textContent='同步失败：'+first.error.message;return}
  const items=entries.map(([sku,qty])=>({task_id:row.id,sku,qty}));const second=await taskWriteSb.from('task_items').insert(items);
