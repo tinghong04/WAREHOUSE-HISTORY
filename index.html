@@ -41,7 +41,6 @@
         <button class="dark" onclick="clearSelection()">取消全选</button>
         <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button>
         <button class="red" onclick="deleteSelected()">删除已勾选</button>
-        <button class="red" onclick="deleteAllHistory()">全部删除</button>
         <button class="red" onclick="logout()">退出</button>
       </div>
       <div id="status" class="muted" style="margin-top:10px"></div>
@@ -262,23 +261,6 @@ async function deleteTask(id,taskName){
  const label=taskName?`「${taskName}」`:'这条历史记录';
  if(!confirm(`确定删除 ${label} 吗？\n\n删除后无法恢复。`))return;
  await deleteTasks([id]);
-}
-
-async function deleteAllHistory(){
- if(!confirm('确定要删除【全部历史记录】吗？\n\n这会删除所有任务和 SKU 明细，无法恢复。'))return;
- const code=prompt('这是危险操作。\n请输入 DELETE ALL 确认全部删除：');
- if(code!=='DELETE ALL')return alert('已取消，没有删除任何数据。');
-
- $('status').className='muted';$('status').textContent='正在删除全部历史…';
-
- // First remove all child rows, then all tasks.
- const r1=await sb.from('task_items').delete().not('id','is',null);
- if(r1.error){$('status').textContent='全部删除失败：'+r1.error.message;$('status').className='err';return}
- const r2=await sb.from('tasks').delete().not('id','is',null);
- if(r2.error){$('status').textContent='全部删除失败：'+r2.error.message;$('status').className='err';return}
-
- $('status').className='muted';$('status').textContent='全部历史已删除';
- await loadTasks();
 }
 
 async function exportInboundReport(id,format="excel"){
