@@ -37,7 +37,7 @@
         <button class="dark" onclick="clearFilters()">清除筛选</button>
         <button class="dark" onclick="selectAllVisible()">全选</button>
         <button class="dark" onclick="clearSelection()">取消全选</button>
-        <button class="dark" onclick="exportSelected()">导出已勾选 Excel</button>
+        <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button>
         <button class="red" onclick="deleteSelected()">删除已勾选</button>
         <button class="red" onclick="deleteAllHistory()">全部删除</button>
         <button class="red" onclick="logout()">退出</button>
@@ -98,7 +98,7 @@ function renderTasks(){
  if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
  currentTasks.forEach(t=>{
    const tr=document.createElement('tr');
-   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}${t.customer_name?'<div class="muted" style="margin-top:3px">客户：'+esc(t.customer_name)+'</div>':''}${t.task_content==="inbound"&&t.batch_no?'<div class="muted" style="margin-top:3px">批次：'+esc(t.batch_no)+'</div>':''} <span class="pill">${t.task_content==="order"?"扫单":t.task_content==="inbound"?"入库":"点货"}</span></td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button>${t.task_content==="order"?`<button class="copybtn" onclick="copyOrderBatch('${t.id}')">复制批次物流单号</button>`:t.task_content==="inbound"?`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button><button class="copybtn" onclick="exportInboundReport('${t.id}')">导出入库记录</button>`:`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button>`}</div></td>`;
+   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}${t.customer_name?'<div class="muted" style="margin-top:3px">客户：'+esc(t.customer_name)+'</div>':''}${t.task_content==="inbound"&&t.batch_no?'<div class="muted" style="margin-top:3px">批次：'+esc(t.batch_no)+'</div>':''} <span class="pill">${t.task_content==="order"?"扫单":t.task_content==="inbound"?"入库":"点货"}</span></td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button>${t.task_content==="order"?`<button class="copybtn" onclick="copyOrderBatch('${t.id}')">复制批次物流单号</button><button class="copybtn" onclick="exportTaskExcel('${t.id}')">导出扫单记录</button>`:t.task_content==="inbound"?`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button><button class="copybtn" onclick="exportInboundReport('${t.id}')">导出入库记录</button>`:`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button><button class="copybtn" onclick="exportTaskExcel('${t.id}')">导出库存盘点记录</button>`}</div></td>`;
    tb.appendChild(tr);
    const detail=document.createElement('tr');detail.id='d_'+t.id;detail.className='hidden';detail.innerHTML='<td colspan="8" class="details"><div class="muted">读取 SKU…</div></td>';tb.appendChild(detail);
  });
@@ -306,6 +306,28 @@ async function exportInboundReport(id){
  const blob=new Blob([report],{type:'text/html;charset=utf-8'});
  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='入库记录_'+String(task.batch_no||task.task_date||'批次').replace(/[\\/:*?"<>|]/g,'_')+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
  $('status').className='ok';$('status').textContent='入库记录已导出，打开文件即可查看照片或打印为 PDF';
+}
+async function exportTaskExcel(id){
+ const task=currentTasks.find(x=>x.id===id);if(!task)return;
+ $('status').textContent='正在导出任务记录…';
+ const {data:items,error}=await sb.from('task_items').select('sku,qty').eq('task_id',id).order('sku');
+ if(error){$('status').className='err';$('status').textContent='导出失败：'+error.message;return}
+ const title=task.task_content==="order"?"扫单记录":task.task_content==="inbound"?"入库记录":"库存盘点记录";
+ const rows=[['客户','日期','员工','任务/批次','SKU','数量'],...(items||[]).map(x=>[task.customer_name||'',task.task_date||'',task.employee_name||'',task.batch_no||task.task_name||'',x.sku,x.qty])];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),title);XLSX.writeFile(wb,title+'_'+(task.batch_no||task.task_date||'任务')+'.xlsx');
+ $('status').className='ok';$('status').textContent='导出完成';
+}
+async function exportSelectedPdf(){
+ const ids=selectedIds();if(!ids.length)return alert('请先勾选需要导出的任务');
+ const selected=currentTasks.filter(x=>ids.includes(x.id));
+ const {data:items,error}=await sb.from('task_items').select('task_id,sku,qty').in('task_id',ids).order('sku');
+ if(error){$('status').className='err';$('status').textContent='导出失败：'+error.message;return}
+ const escPdf=s=>esc(s);
+ const map=Object.fromEntries(selected.map(t=>[t.id,t]));
+ const rows=(items||[]).map(x=>{const t=map[x.task_id]||{};return '<tr><td>'+escPdf(t.customer_name||'')+'</td><td>'+escPdf(t.task_date||'')+'</td><td>'+escPdf(t.employee_name||'')+'</td><td>'+escPdf(t.batch_no||t.task_name||'')+'</td><td>'+escPdf(x.sku)+'</td><td>'+escPdf(x.qty)+'</td></tr>'}).join('');
+ const win=window.open('','_blank');if(!win)return alert('请允许弹出窗口后重试');
+ win.document.write('<!doctype html><meta charset="utf-8"><title>仓库记录</title><style>body{font-family:Arial,"Microsoft YaHei";padding:24px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #777;padding:7px;text-align:left}h1{font-size:20px}</style><h1>仓库记录</h1><p>导出时间：'+escPdf(new Date().toLocaleString())+'</p><table><thead><tr><th>客户</th><th>日期</th><th>员工</th><th>任务/批次</th><th>SKU/单号</th><th>数量</th></tr></thead><tbody>'+rows+'</tbody></table>');
+ win.document.close();win.onload=()=>win.print();
 }
 async function exportSelected(){
  const ids=selectedIds();
