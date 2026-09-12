@@ -299,6 +299,24 @@ async function deleteTask(id,taskName){
  await deleteTasks([id]);
 }
 
+async function buildPhotoOverviewPdf(title,identifier,incoming,exceptions,orderPhotos){
+ const entries=[
+   ...incoming.map((photo,index)=>({kind:'到货照片 '+String(index+1),note:String(photo.order_no||''),photo})),
+   ...exceptions.map((photo,index)=>({kind:'异常照片 '+String(index+1),note:String(photo.order_no||'').replace(/^异常：/,''),photo})),
+   ...orderPhotos.map((photo,index)=>({kind:'单号照片 '+String(index+1),note:String(photo.order_no||''),photo}))
+ ];
+ const cards=entries.length?entries.map(entry=>'<article class="photo-card"><div class="tag">'+esc(entry.kind)+'</div>'+(entry.photo.dataUrl?'<img src="'+entry.photo.dataUrl+'">':'<div class="missing">照片读取失败</div>')+'<p>'+esc(entry.note)+'</p></article>').join(''):'<p>没有照片</p>';
+ const html='<!doctype html><meta charset="utf-8"><title>照片总览</title><style>body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;color:#111;margin:28px}h1{font-size:28px;margin:0 0 8px;color:#1f4e78}p.meta{color:#555;margin:0 0 20px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}.photo-card{border:1px solid #c9d4df;border-radius:8px;padding:10px;break-inside:avoid;page-break-inside:avoid}.tag{font-weight:800;color:#1f4e78;margin:0 0 7px}.photo-card img{display:block;width:100%;height:360px;object-fit:contain;background:#f4f6f8}.photo-card p{margin:8px 0 0;line-height:1.5;word-break:break-word}.missing{height:260px;display:grid;place-items:center;background:#f4f6f8;color:#777}</style><h1>'+esc(title)+' · 照片总览</h1><p class="meta">批次 / 任务：'+esc(identifier||'未填写')+'　导出时间：'+esc(new Date().toLocaleString())+'</p><div class="grid">'+cards+'</div>';
+ const frame=document.createElement('iframe');frame.style.cssText='position:fixed;left:-20000px;top:0;width:1240px;height:900px;border:0';document.body.appendChild(frame);
+ const doc=frame.contentDocument;doc.open();doc.write(html);doc.close();await new Promise(resolve=>setTimeout(resolve,300));
+ await Promise.all([...doc.images].map(img=>img.complete?Promise.resolve():new Promise(resolve=>{img.onload=img.onerror=resolve})));
+ const scale=2,canvas=await html2canvas(doc.body,{scale,backgroundColor:'#fff',useCORS:true,windowWidth:1240}),top=doc.body.getBoundingClientRect().top;
+ const points=[...doc.querySelectorAll('.photo-card')].map(el=>Math.round((el.getBoundingClientRect().top-top)*scale)).filter(y=>y>0).sort((a,b)=>a-b);
+ const {jsPDF}=window.jspdf,pdf=new jsPDF('p','mm','a4'),pw=pdf.internal.pageSize.getWidth(),ph=pdf.internal.pageSize.getHeight(),pagePx=Math.floor(canvas.width*ph/pw);
+ for(let y=0,page=0;y<canvas.height;page++){let height=Math.min(pagePx,canvas.height-y);if(canvas.height-y>pagePx){const safe=points.filter(point=>point>y+Math.floor(pagePx*.45)&&point<y+pagePx-30);if(safe.length)height=safe[safe.length-1]-y}const part=document.createElement('canvas');part.width=canvas.width;part.height=height;part.getContext('2d').drawImage(canvas,0,y,canvas.width,height,0,0,canvas.width,height);if(page)pdf.addPage();pdf.addImage(part.toDataURL('image/png'),'PNG',0,0,pw,part.height*pw/canvas.width);y+=height}
+ frame.remove();return pdf.output('blob');
+}
+
 async function exportInboundReport(id,format="excel"){
  const task=currentTasks.find(x=>x.id===id);if(!task)return;
  const type=task.task_content||'count';
@@ -351,9 +369,13 @@ async function exportInboundReport(id,format="excel"){
    const zip=new JSZip();
    zip.file(title+'_'+safeName+'.pdf',pdfBlob);
    zip.file(title+'_'+safeName+'.xls',new Blob([report],{type:'application/vnd.ms-excel;charset=utf-8'}));
-   const folder=zip.folder('照片（原图）');
-   const archivePhotos=isInbound?[...incoming,...exceptions]:(isOrder?orderPhotos:exceptions);
-   archivePhotos.forEach((photo,index)=>{if(photo.blob)folder.file((isInbound&&String(photo.order_no||'').startsWith('异常：')?'异常照片_':'照片_')+String(index+1).padStart(2,'0')+'.jpg',photo.blob);});
+   $('status').textContent='正在生成照片总览…';
+   zip.file('照片总览.pdf',await buildPhotoOverviewPdf(title,identifier,incoming,exceptions,orderPhotos));
+   const incomingFolder=zip.folder(isOrder?'01_单号原图':'01_到货原图');
+   const exceptionFolder=zip.folder('02_异常原图');
+   const regularPhotos=isOrder?orderPhotos:incoming;
+   regularPhotos.forEach((photo,index)=>{if(photo.blob)incomingFolder.file((isOrder?'单号照片_':'到货照片_')+String(index+1).padStart(3,'0')+'.jpg',photo.blob);});
+   exceptions.forEach((photo,index)=>{if(photo.blob)exceptionFolder.file('异常照片_'+String(index+1).padStart(3,'0')+'.jpg',photo.blob);});
    const zipBlob=await zip.generateAsync({type:'blob',compression:'DEFLATE',compressionOptions:{level:6}},meta=>{$('status').textContent='正在压缩原图… '+Math.round(meta.percent)+'%'});
    const a=document.createElement('a');a.href=URL.createObjectURL(zipBlob);a.download=title+'_'+safeName+'_完整资料.zip';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1500);
    $('status').className='ok';$('status').textContent='完整压缩包已下载（PDF、Excel、原图）';
