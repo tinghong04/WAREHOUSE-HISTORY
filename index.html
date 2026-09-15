@@ -455,8 +455,7 @@ async function exportSelectedPreview(){
  if(!batch)return alert('这个记录没有批次号，暂时不能生成客户链接');
  const url=location.origin+'/'+encodeURIComponent(batch);
  try{await navigator.clipboard.writeText(url)}catch{const input=document.createElement('textarea');input.value=url;input.style.cssText='position:fixed;opacity:0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove()}
- $('status').className='ok';$('status').textContent='客户链接已复制：'+url;
- window.open(url,'_blank');
+ $('status').className='ok';$('status').textContent='客户链接已复制，可直接发给客户';
 }
 
 // Desktop scanning workbench
