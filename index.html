@@ -75,7 +75,7 @@
         <button class="dark" onclick="clearFilters()">清除筛选</button>
         <button class="dark" onclick="selectAllVisible()">全选</button>
         <button class="dark" onclick="clearSelection()">取消全选</button>
-        <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button class="dark" onclick="exportSelectedPreview()">客户查看</button>
+        <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button class="dark" onclick="exportSelectedPreview()">复制客户链接</button>
         <button class="red" onclick="deleteSelected()">删除已勾选</button>
       </div>
       <div id="status" class="muted" style="margin-top:10px"></div>
@@ -450,8 +450,13 @@ async function exportSelectedZip(){
  return exportInboundReport(ids[0],"zip");
 }
 async function exportSelectedPreview(){
- const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后打开客户查看页面');
- return exportInboundReport(ids[0],"preview");
+ const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后复制客户链接');
+ const task=currentTasks.find(t=>t.id===ids[0]),batch=String(task?.batch_no||'').trim();
+ if(!batch)return alert('这个记录没有批次号，暂时不能生成客户链接');
+ const url=location.origin+'/'+encodeURIComponent(batch);
+ try{await navigator.clipboard.writeText(url)}catch{const input=document.createElement('textarea');input.value=url;input.style.cssText='position:fixed;opacity:0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove()}
+ $('status').className='ok';$('status').textContent='客户链接已复制：'+url;
+ window.open(url,'_blank');
 }
 
 // Desktop scanning workbench
