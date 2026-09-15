@@ -359,7 +359,9 @@ async function exportInboundReport(id,format="excel"){
  if(format==="preview"){
    const win=window.open('','_blank');
    if(!win){$('status').className='err';$('status').textContent='请允许弹出窗口后再预览';return}
-   const customerReport=report.replace('</style>','@media screen{body{max-width:920px;margin:24px auto;padding:0 16px}.photos{max-width:820px}h1{font-size:26px}h2{margin-top:24px}}</style>');
+   const customerReport=report
+     .replace('</style>','@media screen{body{max-width:920px;margin:24px auto;padding:0 16px}.photos{max-width:820px}h1{font-size:26px}h2{margin-top:24px}img{cursor:zoom-in}.photo-lightbox{position:fixed;inset:0;z-index:9999;display:none;place-items:center;padding:22px;background:rgba(0,0,0,.88)}.photo-lightbox.show{display:grid}.photo-lightbox img{max-width:96vw;max-height:92vh;width:auto;height:auto;object-fit:contain;cursor:zoom-out;border:0!important;background:#111}.photo-lightbox button{position:fixed;top:18px;right:18px;width:42px;height:42px;border:0;border-radius:50%;background:#fff;color:#111;font-size:26px;cursor:pointer}}</style>')
+     .replace('</body>','<div class="photo-lightbox" id="photoLightbox"><button type="button" aria-label="关闭">×</button><img alt="高清照片"></div><script>const box=document.getElementById("photoLightbox"),big=box.querySelector("img");document.querySelectorAll("figure img,.exception-images img").forEach(img=>img.addEventListener("click",()=>{big.src=img.src;box.classList.add("show")}));const close=()=>{box.classList.remove("show");big.src=""};box.addEventListener("click",e=>{if(e.target===box||e.target.tagName==="BUTTON")close()});document.addEventListener("keydown",e=>{if(e.key==="Escape")close()});</script></body>');
    win.document.open();win.document.write(customerReport);win.document.close();
    $('status').className='ok';$('status').textContent='已打开客户预览（仅供查看，尚未公开）';
    return;
