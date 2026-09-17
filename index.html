@@ -76,7 +76,7 @@
         <button onclick="loadTasks()">查询</button>
         <button class="dark" onclick="clearFilters()">清除筛选</button>
         <button id="selectToggleBtn" class="dark" onclick="toggleAllSelection()">全选</button>
-        <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button class="dark" onclick="exportSelectedPreview()">复制客户链接</button>
+        <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button id="customerLinkBtn" class="dark hidden" onclick="exportSelectedPreview()">复制换单客户链接</button>
         <button class="red" onclick="deleteVisibleRecords()">删除记录</button>
       </div>
       <div id="customerPinCard" class="card" style="margin:14px 0 0">
@@ -531,7 +531,7 @@ async function exportSelectedPreview(){
  if(!customer)return alert('这条扫单记录未填写客户，无法生成客户链接');
  const url=location.origin+'/customer/'+encodeURIComponent(customer);
  try{await navigator.clipboard.writeText(url)}catch{const input=document.createElement('textarea');input.value=url;input.style.cssText='position:fixed;opacity:0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove()}
- $('status').className='ok';$('status').textContent='客户链接已复制；客户打开后输入自己的 PIN 即可查看实时记录';
+ $('status').className='ok';$('status').textContent='换单客户链接已复制；客户可直接打开、填写 TK 或退货单号';
 }
 
 // Desktop scanning workbench
@@ -545,7 +545,7 @@ function selectDesktopTab(tab){
  $('workbenchTabBtn').classList.toggle('active',work);$('workbenchTabBtn').classList.toggle('dark',!work);
  $('historyTabBtn').classList.toggle('active',tab==='history');$('historyTabBtn').classList.toggle('dark',tab!=='history');
  $('exchangeTabBtn').classList.toggle('active',exchange);$('exchangeTabBtn').classList.toggle('dark',!exchange);
- $('customerPinCard').classList.toggle('hidden',!exchange);$('exchangeTools').classList.toggle('hidden',!exchange);
+ $('customerPinCard').classList.toggle('hidden',!exchange);$('exchangeTools').classList.toggle('hidden',!exchange);$('customerLinkBtn').classList.toggle('hidden',!exchange);
  if(exchange&&!$('exchangeMonth').value)$('exchangeMonth').value=new Date().toISOString().slice(0,7);
  if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);else{loadTasks();if(exchange)loadCustomers();}
 }
