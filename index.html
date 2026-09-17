@@ -78,6 +78,11 @@
         <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button class="dark" onclick="exportSelectedPreview()">复制客户链接</button>
         <button class="red" onclick="deleteSelected()">删除已勾选</button>
       </div>
+      <div class="card" style="margin:14px 0 0">
+        <b>客户 PIN 管理</b>
+        <div class="grid" style="margin-top:10px"><input id="customerPinName" placeholder="客户名称"><input id="customerPinValue" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div>
+        <div class="actions" style="margin-top:10px"><button class="dark" onclick="saveCustomerPin()">保存客户 PIN</button></div>
+      </div>
       <div id="status" class="muted" style="margin-top:10px"></div>
     </div>
     <div class="card tablewrap"><table><thead><tr><th style="width:44px"><input id="selectAllBox" type="checkbox" title="全选当前结果" onchange="toggleSelectAll(this.checked)"></th><th>日期</th><th>员工</th><th>任务名称</th><th class="num">SKU种类</th><th class="num">总数量</th><th>时间</th><th>操作</th></tr></thead><tbody id="tbody"></tbody></table></div>
@@ -449,6 +454,13 @@ async function exportSelectedZip(){
  const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后导出完整压缩包');
  return exportInboundReport(ids[0],"zip");
 }
+async function saveCustomerPin(){
+ const customer=$('customerPinName').value.trim(),pin=$('customerPinValue').value.trim();
+ if(!customer||!/^[0-9]{4,6}$/.test(pin))return alert('请填写客户名称和 4–6 位 PIN');
+ const {data:{session}}=await sb.auth.getSession();if(!session)return alert('登录已失效，请重新登录');
+ $('status').className='muted';$('status').textContent='正在保存客户 PIN…';
+ try{const response=await fetch('/api/customer-pin',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({customer,pin})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(await response.text()||result.message||'保存失败');$('customerPinValue').value='';$('status').className='ok';$('status').textContent='客户 PIN 已保存：'+customer}catch(error){$('status').className='err';$('status').textContent='保存失败：'+(error.message||'请重试')}}
+
 async function exportSelectedPreview(){
  const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后复制客户链接');
  const task=currentTasks.find(t=>t.id===ids[0]),batch=String(task?.batch_no||'').trim();
