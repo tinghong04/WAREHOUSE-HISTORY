@@ -487,6 +487,8 @@ function filterExchangeCustomers(){const term=$('customerManageSearch').value.tr
 
 async function createCustomer(){const customer=$('newCustomerName').value.trim(),pin=$('newCustomerPin').value.trim();if(!customer||!/^[0-9]{4,6}$/.test(pin))return alert('请填写客户名称和 4–6 位 PIN');try{await customerPinRequest('create',customer,pin);$('newCustomerName').value='';$('newCustomerPin').value='';await loadCustomers();$('status').className='ok';$('status').textContent='客户已新增'}catch(error){$('status').className='err';$('status').textContent=error.message}}
 async function updateCustomerPin(){const customer=$('customerManageSearch').value.trim(),pin=$('customerPinValue').value.trim();if(!customer)return alert('请先在上方搜索并选择客户');if(!/^[0-9]{4,6}$/.test(pin))return alert('请输入 4–6 位 PIN');try{await customerPinRequest('update',customer,pin);$('customerPinValue').value='';$('status').className='ok';$('status').textContent='密码已修改'}catch(error){$('status').className='err';$('status').textContent=error.message}}
+async function deleteCustomer(){const customer=$('customerManageSearch').value.trim(),pin=$('deleteCustomerPin').value.trim();if(!customer)return alert('请先在上方搜索并选择客户');if(!/^[0-9]{4,6}$/.test(pin))return alert('请输入该客户的 4–6 位 PIN');if(!confirm('确定删除客户“'+customer+'”？\n\n不会删除已有扫单历史。'))return;try{await customerPinRequest('delete',customer,pin);$('customerManageSearch').value='';$('deleteCustomerPin').value='';$('customerDeleteForm').classList.add('hidden');await loadCustomers();$('status').className='ok';$('status').textContent='客户已删除'}catch(error){$('status').className='err';$('status').textContent=error.message}}
+
 
 async function exportSelectedPreview(){
  const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后复制客户链接');
