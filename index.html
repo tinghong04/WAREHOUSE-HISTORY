@@ -299,7 +299,8 @@ async function deleteTasks(ids){
   await loadTasks();return true;
 }
 async function deleteSelected(){
- const ids=selectedIds();
+ let ids=selectedIds();
+ if(!ids.length&&$('selectAllBox')?.checked)ids=currentTasks.map(task=>task.id);
  if(!ids.length)return alert('请先勾选需要删除的任务');
  if(!confirm('确定删除已勾选的 '+ids.length+' 条任务吗？\n\n相关 SKU 明细和照片也会一并删除，无法恢复。'))return;
  await deleteTasks(ids);
