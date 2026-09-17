@@ -74,15 +74,15 @@
       <div class="actions">
         <button onclick="loadTasks()">查询</button>
         <button class="dark" onclick="clearFilters()">清除筛选</button>
-        <button class="dark" onclick="selectAllVisible()">全选</button>
-        <button class="dark" onclick="clearSelection()">取消全选</button>
+        <button id="selectToggleBtn" class="dark" onclick="toggleAllSelection()">全选</button>
         <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button class="dark" onclick="exportSelectedPreview()">复制客户链接</button>
         <button class="red" onclick="deleteVisibleRecords()">删除记录</button>
       </div>
       <div id="customerPinCard" class="card" style="margin:14px 0 0">
         <b>客户 PIN 管理</b>
         <div class="grid" style="margin-top:10px"><input id="customerPinName" placeholder="客户名称"><input id="customerPinValue" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div>
-        <div class="actions" style="margin-top:10px"><button class="dark" onclick="saveCustomerPin()">保存客户 PIN</button></div>
+        <div class="actions" style="margin-top:10px"><button class="dark" onclick="saveCustomerPin()">新增客户并设置 PIN</button></div>
+        <div id="customerList" class="muted" style="margin-top:12px">客户列表加载中…</div>
       </div>
       <div id="status" class="muted" style="margin-top:10px"></div>
     </div>
@@ -229,9 +229,11 @@ function selectedIds(){return [...document.querySelectorAll('.taskPick:checked')
 function toggleSelectAll(checked){document.querySelectorAll('.taskPick').forEach(x=>x.checked=checked);updateSelectAllState()}
 function selectAllVisible(){toggleSelectAll(true)}
 function clearSelection(){toggleSelectAll(false)}
+function toggleAllSelection(){const any=[...document.querySelectorAll('.taskPick:checked')].length>0;toggleSelectAll(!any);$('selectToggleBtn').textContent=any?'全选':'取消全选'}
 function updateSelectAllState(){
  const boxes=[...document.querySelectorAll('.taskPick')], checked=boxes.filter(x=>x.checked).length, all=$('selectAllBox');
  if(!all)return; all.checked=boxes.length>0&&checked===boxes.length; all.indeterminate=checked>0&&checked<boxes.length;
+ const toggle=$('selectToggleBtn');if(toggle)toggle.textContent=checked?'取消全选':'全选';
  $('status').textContent=`共 ${currentTasks.length} 个任务，已勾选 ${checked} 个`;
 }
 
