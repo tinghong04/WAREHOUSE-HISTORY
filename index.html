@@ -31,6 +31,7 @@
   <div class="desktop-tabs">
     <button id="workbenchTabBtn" class="active" onclick="selectDesktopTab('workbench')">⌁ 工作台</button>
     <button id="historyTabBtn" class="dark" onclick="selectDesktopTab('history')">▦ 历史记录</button>
+    <button id="exchangeTabBtn" class="dark" onclick="selectDesktopTab('exchange')">⇄ 换单管理</button>
     <button class="dark" style="margin-left:auto" onclick="logout()">退出</button>
   </div>
 
@@ -78,7 +79,7 @@
         <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button class="dark" onclick="exportSelectedPreview()">复制客户链接</button>
         <button class="red" onclick="deleteSelected()">删除已勾选</button>
       </div>
-      <div class="card" style="margin:14px 0 0">
+      <div id="customerPinCard" class="card" style="margin:14px 0 0">
         <b>客户 PIN 管理</b>
         <div class="grid" style="margin-top:10px"><input id="customerPinName" placeholder="客户名称"><input id="customerPinValue" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div>
         <div class="actions" style="margin-top:10px"><button class="dark" onclick="saveCustomerPin()">保存客户 PIN</button></div>
@@ -124,6 +125,7 @@ async function loadTasks(){
  const {data,error}=await q;
  if(error){$('status').textContent='读取失败：'+error.message;$('status').className='err';return}
  currentTasks=data||[];
+ currentTasks=currentTasks.filter(task=>orderManageActive?taskType(task)==='order':taskType(task)!=='order');
  const skuKeyword=$('skuSearch').value.trim();
  if(skuKeyword){
    const {data:matches,error:matchError}=await sb.from('task_items').select('task_id').ilike('sku','%'+skuKeyword+'%');
@@ -473,11 +475,15 @@ async function exportSelectedPreview(){
 // Desktop scanning workbench
 let deskMode='count', deskManual=false, deskCounts={}, deskHistory=[];
 function deskUuid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}
+let orderManageActive=false;
 function selectDesktopTab(tab){
- const work=tab==='workbench';$('workbench').classList.toggle('hidden',!work);$('historyPanel').classList.toggle('hidden',work);
+ const work=tab==='workbench',exchange=tab==='exchange';orderManageActive=exchange;
+ $('workbench').classList.toggle('hidden',!work);$('historyPanel').classList.toggle('hidden',work);
  $('workbenchTabBtn').classList.toggle('active',work);$('workbenchTabBtn').classList.toggle('dark',!work);
- $('historyTabBtn').classList.toggle('active',!work);$('historyTabBtn').classList.toggle('dark',work);
- if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);
+ $('historyTabBtn').classList.toggle('active',tab==='history');$('historyTabBtn').classList.toggle('dark',tab!=='history');
+ $('exchangeTabBtn').classList.toggle('active',exchange);$('exchangeTabBtn').classList.toggle('dark',!exchange);
+ $('customerPinCard').classList.toggle('hidden',!exchange);
+ if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);else loadTasks();
 }
 function setDeskMode(mode){
  deskMode=mode;
