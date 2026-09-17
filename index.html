@@ -87,7 +87,7 @@
         <div id="customerNewForm" class="hidden" style="margin-top:12px"><div class="grid"><input id="newCustomerName" placeholder="新增客户名称"><input id="newCustomerPin" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div><div class="actions" style="margin-top:10px"><button onclick="createCustomer()">保存新客户</button></div></div>
         <div id="customerList" class="muted" style="margin-top:12px">暂无客户</div>
       </div>
-      <div id="exchangeTools" class="hidden actions" style="margin-top:14px"><input id="exchangeMonth" type="month" style="max-width:220px" onchange="setExchangeMonth(this.value)"><button class="dark" onclick="exportExchangeMonth()">导出本月换面单</button></div>
+      <div id="exchangeTools" class="hidden actions" style="margin-top:14px"><input id="exchangeMonth" type="month" style="max-width:220px" onchange="setExchangeMonth(this.value)"><button class="dark" onclick="exportExchangeMonth()">导出本月换面单</button><button class="dark" onclick="bindPhonePrompt()">绑定仓库手机</button></div>
       <div id="exchangeStats" class="hidden" style="margin-top:14px"></div>
       <div id="status" class="muted" style="margin-top:10px"></div>
     </div>
@@ -119,6 +119,7 @@ async function showApp(){
  setDeskMode('count');renderDeskTask();selectDesktopTab('workbench');await loadTasks();
 }
 async function clearFilters(){['dateFrom','dateTo','employee','task','skuSearch'].forEach(id=>$(id).value='');await loadTasks()}
+async function bindPhonePrompt(){const deviceId=prompt('请输入手机“发货”页面显示的本机绑定编号');if(!deviceId)return;const label=prompt('给这台手机取个名字（例如：仓库 iPhone）')||'仓库手机';const {data:{session}}=await sb.auth.getSession();if(!session)return alert('登录已失效');const r=await fetch('/api/admin-bind-device',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({deviceId,label})});if(!r.ok)return alert(await r.text());alert('手机已绑定，以后可直接使用发货核对')}
 function setExchangeMonth(value){if(!value)return;const [year,month]=value.split('-').map(Number),last=new Date(year,month,0).getDate();$('dateFrom').value=value+'-01';$('dateTo').value=value+'-'+String(last).padStart(2,'0');loadTasks()}
 async function exportExchangeMonth(){
  if(!currentTasks.length)return alert('这个月份没有换面单记录');
