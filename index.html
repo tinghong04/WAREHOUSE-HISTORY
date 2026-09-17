@@ -87,6 +87,7 @@
         <div id="customerNewForm" class="hidden" style="margin-top:12px"><div class="grid"><input id="newCustomerName" placeholder="新增客户名称"><input id="newCustomerPin" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div><div class="actions" style="margin-top:10px"><button onclick="createCustomer()">保存新客户</button></div></div>
         <div id="customerList" class="muted" style="margin-top:12px">暂无客户</div>
       </div>
+      <div id="exchangeTools" class="hidden actions" style="margin-top:14px"><input id="exchangeMonth" type="month" style="max-width:220px" onchange="setExchangeMonth(this.value)"><button class="dark" onclick="exportExchangeMonth()">导出本月换面单</button></div>
       <div id="exchangeStats" class="hidden" style="margin-top:14px"></div>
       <div id="status" class="muted" style="margin-top:10px"></div>
     </div>
@@ -118,6 +119,20 @@ async function showApp(){
  setDeskMode('count');renderDeskTask();selectDesktopTab('workbench');await loadTasks();
 }
 async function clearFilters(){['dateFrom','dateTo','employee','task','skuSearch'].forEach(id=>$(id).value='');await loadTasks()}
+function setExchangeMonth(value){if(!value)return;const [year,month]=value.split('-').map(Number),last=new Date(year,month,0).getDate();$('dateFrom').value=value+'-01';$('dateTo').value=value+'-'+String(last).padStart(2,'0');loadTasks()}
+async function exportExchangeMonth(){
+ if(!currentTasks.length)return alert('这个月份没有换面单记录');
+ const ids=currentTasks.map(t=>t.id),{data:items,error}=await sb.from('task_items').select('task_id,sku').in('task_id',ids).order('sku');if(error)return alert('导出失败：'+error.message);
+ const map=Object.fromEntries(currentTasks.map(t=>[t.id,t])),rows=[['客户','日期','虾皮单号','状态','TK/退货单号','更新时间'],...(items||[]).map(item=>{const task=map[item.task_id],action=taskMeta(task)?.customer_actions?.[item.sku]||{};return[task.customer_name||'',task.task_date||'',item.sku,action.status==='tk'?'TK 单号':action.status==='return'?'退货':'待处理',action.tracking_no||'',action.updated_at||'']})];
+ const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rows),'换面单记录');XLSX.writeFile(wb,'换面单_'+($('exchangeMonth').value||new Date().toISOString().slice(0,7))+'.xlsx');
+}
+async function undoCustomerAction(taskId,encodedOrder){
+ const orderNo=decodeURIComponent(encodedOrder);if(!confirm('撤销“'+orderNo+'”的 TK / 退货登记？'))return;
+ const {data:{session}}=await sb.auth.getSession();if(!session)return alert('登录已失效');
+ const r=await fetch('/api/admin-order-action',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({taskId,orderNo})});
+ if(!r.ok)return alert(await r.text());await loadTasks();
+}
+
 
 async function loadTasks(){
  $('status').textContent='读取中…';
@@ -148,9 +163,9 @@ function renderTasks(){
  const tb=$('tbody');tb.innerHTML='';
  const summary=$('exchangeStats');
  if(orderManageActive){
-   const groups={};currentTasks.forEach(task=>{const name=task.customer_name||'未填写客户';if(!groups[name])groups[name]={tasks:0,total:0};groups[name].tasks++;groups[name].total+=Number(task.total_qty)||0});
-   const rows=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0],'zh-CN')).map(([name,data])=>'<div style="padding:11px 12px;background:#202020;border:1px solid #303030;border-radius:11px"><b>'+esc(name)+'</b><div class="muted" style="margin-top:4px">'+data.tasks+' 个扫单批次 · '+data.total+' 个单号</div></div>').join('');
-   summary.classList.toggle('hidden',!rows);summary.innerHTML=rows?'<b style="display:block;margin-bottom:8px">全部客户实时换面单汇总</b><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">'+rows+'</div>':'';
+   const groups={};currentTasks.forEach(task=>{const name=task.customer_name||'未填写客户',actions=taskMeta(task)?.customer_actions||{};if(!groups[name])groups[name]={tasks:0,total:0,tk:0,returns:0};groups[name].tasks++;groups[name].total+=Number(task.total_qty)||0;Object.values(actions).forEach(action=>{if(action.status==='tk')groups[name].tk++;if(action.status==='return')groups[name].returns++})});
+   const rows=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0],'zh-CN')).map(([name,data])=>'<div style="padding:11px 12px;background:#202020;border:1px solid #303030;border-radius:11px"><b>'+esc(name)+'</b><div class="muted" style="margin-top:4px">扫单 '+data.total+' · 已填 TK '+data.tk+' · 退货 '+data.returns+' · 待处理 '+Math.max(0,data.total-data.tk-data.returns)+'</div></div>').join('');
+   summary.classList.toggle('hidden',!rows);summary.innerHTML=rows?'<b style="display:block;margin-bottom:8px">全部客户实时换面单汇总</b><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">'+rows+'</div>':'';
  }else{summary.classList.add('hidden');summary.innerHTML='';}
  if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
  let lastCustomer='';
@@ -517,7 +532,8 @@ function selectDesktopTab(tab){
  $('workbenchTabBtn').classList.toggle('active',work);$('workbenchTabBtn').classList.toggle('dark',!work);
  $('historyTabBtn').classList.toggle('active',tab==='history');$('historyTabBtn').classList.toggle('dark',tab!=='history');
  $('exchangeTabBtn').classList.toggle('active',exchange);$('exchangeTabBtn').classList.toggle('dark',!exchange);
- $('customerPinCard').classList.toggle('hidden',!exchange);
+ $('customerPinCard').classList.toggle('hidden',!exchange);$('exchangeTools').classList.toggle('hidden',!exchange);
+ if(exchange&&!$('exchangeMonth').value)$('exchangeMonth').value=new Date().toISOString().slice(0,7);
  if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);else{loadTasks();if(exchange)loadCustomers();}
 }
 function setDeskMode(mode){
