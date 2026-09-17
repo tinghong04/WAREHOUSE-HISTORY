@@ -125,11 +125,11 @@ async function bindPhonePrompt(){
  const r=await fetch('/api/admin-bind-device',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action:'pair'})});
  if(!r.ok)return alert(await r.text());
  const data=await r.json(),payload=data.code;
- const win=window.open('','_blank','width=430,height=570');
+ const win=window.open('','_blank','width=500,height=720');
  if(!win)return alert('浏览器拦截了二维码窗口，请允许弹出窗口后再试');
- win.document.write('<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><title>绑定仓库手机</title><body style="margin:0;background:#111;color:#fff;font-family:system-ui;padding:28px;text-align:center"><h2>绑定仓库手机</h2><p style="color:#bbb">打开手机「扫单 → 发货」，直接扫描此二维码。</p><div id="pairQr" style="display:flex;justify-content:center;margin:20px auto"></div><p style="font-size:26px;font-weight:800;letter-spacing:4px">'+data.code+'</p><p style="color:#ffcf8a">二维码十分钟内有效，且只能绑定一台手机。</p></body></html>');
+ win.document.write('<!doctype html><html><meta name="viewport" content="width=device-width,initial-scale=1"><title>绑定仓库手机</title><body style="margin:0;background:#111;color:#fff;font-family:system-ui;padding:24px;text-align:center;min-height:100vh;overflow:auto"><h2 style="margin:0 0 10px">绑定仓库手机</h2><p style="color:#bbb;margin:0 0 18px">手机选「扫单 → 发货 → 相机」后扫描。</p><div id="pairQr" style="width:300px;height:300px;margin:0 auto 18px;padding:20px;background:#fff;border-radius:18px;display:block;overflow:visible"></div><p style="font-size:28px;font-weight:800;letter-spacing:5px;margin:0 0 14px">'+data.code+'</p><p style="color:#ffcf8a;margin:0">二维码十分钟内有效，且只能绑定一台手机。</p></body></html>');
  win.document.close();
- new QRCode(win.document.getElementById('pairQr'),{text:payload,width:280,height:280,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+ new QRCode(win.document.getElementById('pairQr'),{text:payload,width:260,height:260,colorDark:'#000000',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
 }
 function setExchangeMonth(value){if(!value)return;const [year,month]=value.split('-').map(Number),last=new Date(year,month,0).getDate();$('dateFrom').value=value+'-01';$('dateTo').value=value+'-'+String(last).padStart(2,'0');loadTasks()}
 async function exportExchangeMonth(){
