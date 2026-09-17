@@ -197,7 +197,7 @@ function renderTasks(){
      if(customer!==lastCustomer){const group=document.createElement('tr');group.className='customer-group';group.innerHTML='<td colspan="8"><b>客户：'+esc(customer)+'</b></td>';tb.appendChild(group);lastCustomer=customer}
    }
    const tr=document.createElement('tr');
-   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}${t.customer_name?'<div class="muted" style="margin-top:3px">客户：'+esc(t.customer_name)+'</div>':''}${type==="inbound"&&t.batch_no?'<div class="muted" style="margin-top:3px">批次：'+esc(t.batch_no)+'</div>':''} <span class="pill">${type==="order"?"扫单":type==="inbound"?"入库":"点货"}</span></td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button>${type==="order"?`<button class="copybtn" onclick="copyOrderBatch('${t.id}')">复制批次物流单号</button>`:`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button>`}</div></td>`;
+   tr.innerHTML=`<td><input class="taskPick" type="checkbox" data-id="${t.id}" onchange="updateSelectAllState()"></td><td>${esc(t.task_date)}</td><td>${esc(t.employee_name)}</td><td>${esc(t.task_name||'')}${t.customer_name?'<div class="muted" style="margin-top:3px">客户：'+esc(t.customer_name)+'</div>':''}${type==="inbound"&&t.batch_no?'<div class="muted" style="margin-top:3px">批次：'+esc(t.batch_no)+'</div>':''} <span class="pill">${type==="order"?"扫单":type==="inbound"?"入库":"点货"}</span></td><td class="num">${t.sku_types}</td><td class="num">${t.total_qty}</td><td>${new Date(t.created_at).toLocaleString()}</td><td><div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap"><button class="dark" style="padding:7px 10px" onclick="toggleDetails('${t.id}',this)">查看明细</button>${type==="order"?`<button class="copybtn" onclick="copyOrderBatch('${t.id}')">复制批次物流单号</button>`:`<button class="copybtn" onclick="copyTask('${t.id}')">复制批次</button>`}${t.batch_no?` <button class="copybtn" onclick="copyHistoryLinkForTask('${t.id}')">复制链接</button>`:''}</div></td>`;
    tb.appendChild(tr);
    const detail=document.createElement('tr');detail.id='d_'+t.id;detail.className='hidden';detail.innerHTML='<td colspan="8" class="details"><div class="muted">读取 SKU…</div></td>';tb.appendChild(detail);
  });
@@ -534,12 +534,19 @@ async function deleteCustomer(){const customer=$('customerManageSearch').value.t
 
 
 async function copyHistoryLink(){
- const ids=selectedIds();if(ids.length!==1)return alert('请勾选一条历史记录后复制链接');
- const task=currentTasks.find(t=>t.id===ids[0]),batch=String(task?.batch_no||'').trim();
- if(!batch)return alert('这条记录没有批次号，无法复制历史记录链接');
+ const ids=selectedIds();if(!ids.length)return alert('请勾选至少一条历史记录后复制链接');
+ const tasks=ids.map(id=>currentTasks.find(t=>t.id===id)).filter(Boolean),missing=tasks.filter(t=>!String(t.batch_no||'').trim());
+ if(missing.length)return alert('有 '+missing.length+' 条记录没有批次号，无法生成历史记录链接');
+ const links=tasks.map(t=>location.origin+'/history/'+encodeURIComponent(String(t.batch_no).trim())).join('\n');
+ try{await navigator.clipboard.writeText(links)}catch{const input=document.createElement('textarea');input.value=links;input.style.cssText='position:fixed;opacity:0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove()}
+ $('status').className='ok';$('status').textContent='已复制 '+tasks.length+' 条历史记录链接（一行一个批次）';
+}
+async function copyHistoryLinkForTask(taskId){
+ const task=currentTasks.find(t=>t.id===taskId),batch=String(task?.batch_no||'').trim();
+ if(!batch)return alert('这条记录没有批次号，无法复制链接');
  const url=location.origin+'/history/'+encodeURIComponent(batch);
  try{await navigator.clipboard.writeText(url)}catch{const input=document.createElement('textarea');input.value=url;input.style.cssText='position:fixed;opacity:0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove()}
- $('status').className='ok';$('status').textContent='历史记录链接已复制；客户可直接查看该批次、照片和明细';
+ $('status').className='ok';$('status').textContent='历史记录链接已复制：'+batch;
 }
 async function exportSelectedPreview(){
  const ids=selectedIds();if(ids.length!==1)return alert('请勾选一条该客户的扫单记录后复制链接');
