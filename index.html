@@ -79,10 +79,12 @@
         <button class="red" onclick="deleteVisibleRecords()">删除记录</button>
       </div>
       <div id="customerPinCard" class="card" style="margin:14px 0 0">
-        <b>客户 PIN 管理</b>
-        <div class="grid" style="margin-top:10px"><input id="customerPinName" placeholder="客户名称"><input id="customerPinValue" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div>
-        <div class="actions" style="margin-top:10px"><button class="dark" onclick="saveCustomerPin()">新增客户并设置 PIN</button></div>
-        <div id="customerList" class="muted" style="margin-top:12px">新增客户后会显示在这里</div>
+        <b>客户管理</b>
+        <div class="grid" style="margin-top:10px"><select id="customerSelect"><option value="">选择已创建客户</option></select><input id="customerPinValue" type="password" inputmode="numeric" maxlength="6" placeholder="输入新 4–6 位 PIN"></div>
+        <div class="actions" style="margin-top:10px"><button class="dark" onclick="updateCustomerPin()">修改密码</button></div>
+        <div class="grid" style="margin-top:16px"><input id="newCustomerName" placeholder="新增客户名称"><input id="newCustomerPin" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div>
+        <div class="actions" style="margin-top:10px"><button onclick="createCustomer()">＋ 新增客户</button></div>
+        <div id="customerList" class="muted" style="margin-top:12px">暂无客户</div>
       </div>
       <div id="status" class="muted" style="margin-top:10px"></div>
     </div>
@@ -470,12 +472,17 @@ async function exportSelectedZip(){
  const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后导出完整压缩包');
  return exportInboundReport(ids[0],"zip");
 }
-async function saveCustomerPin(){
- const customer=$('customerPinName').value.trim(),pin=$('customerPinValue').value.trim();
- if(!customer||!/^[0-9]{4,6}$/.test(pin))return alert('请填写客户名称和 4–6 位 PIN');
- const {data:{session}}=await sb.auth.getSession();if(!session)return alert('登录已失效，请重新登录');
- $('status').className='muted';$('status').textContent='正在保存客户 PIN…';
- try{const response=await fetch('/api/customer-pin',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({customer,pin})});const result=await response.json().catch(()=>({}));if(!response.ok)throw new Error(await response.text()||result.message||'保存失败');$('customerPinValue').value='';$('status').className='ok';$('status').textContent='客户 PIN 已保存：'+customer}catch(error){$('status').className='err';$('status').textContent='保存失败：'+(error.message||'请重试')}}
+async function customerPinRequest(action,customer,pin){
+ const {data:{session}}=await sb.auth.getSession();if(!session)throw new Error('登录已失效，请重新登录');
+ const response=await fetch('/api/customer-pin',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({action,customer,pin})});
+ if(!response.ok)throw new Error(await response.text());return response.json();
+}
+async function loadCustomers(){
+ const {data:{session}}=await sb.auth.getSession();if(!session)return;
+ try{const response=await fetch('/api/customer-pin',{headers:{'Authorization':'Bearer '+session.access_token}});const customers=await response.json();const names=(customers||[]).map(x=>x.customer_name);$('customerSelect').innerHTML='<option value="">选择已创建客户</option>'+names.map(name=>'<option value="'+esc(name)+'">'+esc(name)+'</option>').join('');$('customerList').textContent=names.length?'已创建客户：'+names.join('、'):'暂无客户'}catch{$('customerList').textContent='客户列表读取失败'}
+}
+async function createCustomer(){const customer=$('newCustomerName').value.trim(),pin=$('newCustomerPin').value.trim();if(!customer||!/^[0-9]{4,6}$/.test(pin))return alert('请填写客户名称和 4–6 位 PIN');try{await customerPinRequest('create',customer,pin);$('newCustomerName').value='';$('newCustomerPin').value='';await loadCustomers();$('status').className='ok';$('status').textContent='客户已新增'}catch(error){$('status').className='err';$('status').textContent=error.message}}
+async function updateCustomerPin(){const customer=$('customerSelect').value,pin=$('customerPinValue').value.trim();if(!customer)return alert('请先选择客户');if(!/^[0-9]{4,6}$/.test(pin))return alert('请输入 4–6 位 PIN');try{await customerPinRequest('update',customer,pin);$('customerPinValue').value='';$('status').className='ok';$('status').textContent='密码已修改'}catch(error){$('status').className='err';$('status').textContent=error.message}}
 
 async function exportSelectedPreview(){
  const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后复制客户链接');
@@ -497,7 +504,7 @@ function selectDesktopTab(tab){
  $('historyTabBtn').classList.toggle('active',tab==='history');$('historyTabBtn').classList.toggle('dark',tab!=='history');
  $('exchangeTabBtn').classList.toggle('active',exchange);$('exchangeTabBtn').classList.toggle('dark',!exchange);
  $('customerPinCard').classList.toggle('hidden',!exchange);
- if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);else loadTasks();
+ if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);else{loadTasks();if(exchange)loadCustomers();}
 }
 function setDeskMode(mode){
  deskMode=mode;
