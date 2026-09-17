@@ -80,9 +80,10 @@
       </div>
       <div id="customerPinCard" class="card" style="margin:14px 0 0">
         <b>客户管理</b>
-        <input id="customerManageSearch" style="margin-top:10px" placeholder="搜索客户" oninput="filterExchangeCustomers()">
-        <div class="actions" style="margin-top:10px"><button class="dark" onclick="toggleCustomerForm('pin')">修改密码</button><button onclick="toggleCustomerForm('new')">＋ 新增客户</button></div>
+        <input id="customerManageSearch" list="customerOptions" style="margin-top:10px" placeholder="搜索客户" oninput="filterExchangeCustomers()"><datalist id="customerOptions"></datalist>
+        <div class="actions" style="margin-top:10px"><button class="dark" onclick="toggleCustomerForm('pin')">修改密码</button><button onclick="toggleCustomerForm('new')">＋ 新增客户</button><button class="red" onclick="toggleCustomerForm('delete')">删除客户</button></div>
         <div id="customerPinForm" class="hidden" style="margin-top:12px"><div class="grid"><select id="customerSelect"><option value="">选择已创建客户</option></select><input id="customerPinValue" type="password" inputmode="numeric" maxlength="6" placeholder="输入新 4–6 位 PIN"></div><div class="actions" style="margin-top:10px"><button class="dark" onclick="updateCustomerPin()">保存新密码</button></div></div>
+        <div id="customerDeleteForm" class="hidden" style="margin-top:12px"><div class="grid"><select id="deleteCustomerSelect"><option value="">选择客户</option></select><input id="deleteCustomerPin" type="password" inputmode="numeric" maxlength="6" placeholder="填写该客户 PIN"></div><div class="actions" style="margin-top:10px"><button class="red" onclick="deleteCustomer()">确认删除客户</button></div></div>
         <div id="customerNewForm" class="hidden" style="margin-top:12px"><div class="grid"><input id="newCustomerName" placeholder="新增客户名称"><input id="newCustomerPin" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div><div class="actions" style="margin-top:10px"><button onclick="createCustomer()">保存新客户</button></div></div>
         <div id="customerList" class="muted" style="margin-top:12px">暂无客户</div>
       </div>
@@ -479,9 +480,9 @@ async function customerPinRequest(action,customer,pin){
 }
 async function loadCustomers(){
  const {data:{session}}=await sb.auth.getSession();if(!session)return;
- try{const response=await fetch('/api/customer-pin',{headers:{'Authorization':'Bearer '+session.access_token}});const customers=await response.json();const names=(customers||[]).map(x=>x.customer_name);$('customerSelect').innerHTML='<option value="">选择已创建客户</option>'+names.map(name=>'<option value="'+esc(name)+'">'+esc(name)+'</option>').join('');$('customerList').textContent=names.length?'已创建客户：'+names.join('、'):'暂无客户'}catch{$('customerList').textContent='客户列表读取失败'}
+ try{const response=await fetch('/api/customer-pin',{headers:{'Authorization':'Bearer '+session.access_token}});const customers=await response.json();const names=(customers||[]).map(x=>x.customer_name);$('customerSelect').innerHTML='<option value="">选择已创建客户</option>'+names.map(name=>'<option value="'+esc(name)+'">'+esc(name)+'</option>').join('');$('deleteCustomerSelect').innerHTML='<option value="">选择客户</option>'+names.map(name=>'<option value="'+esc(name)+'">'+esc(name)+'</option>').join('');$('customerOptions').innerHTML=names.map(name=>'<option value="'+esc(name)+'">').join('');$('customerList').textContent=names.length?'已创建客户：'+names.join('、'):'暂无客户'}catch{$('customerList').textContent='客户列表读取失败'}
 }
-function toggleCustomerForm(kind){$('customerPinForm').classList.toggle('hidden',kind!=='pin'||!$('customerPinForm').classList.contains('hidden'));$('customerNewForm').classList.toggle('hidden',kind!=='new'||!$('customerNewForm').classList.contains('hidden'))}
+function toggleCustomerForm(kind){['customerPinForm','customerNewForm','customerDeleteForm'].forEach(id=>$(id).classList.toggle('hidden',id!==({pin:'customerPinForm',new:'customerNewForm',delete:'customerDeleteForm'}[kind])||!$(id).classList.contains('hidden')))}
 function filterExchangeCustomers(){const term=$('customerManageSearch').value.trim().toLowerCase();document.querySelectorAll('#tbody tr').forEach(row=>{if(!orderManageActive)return;row.style.display=!term||row.textContent.toLowerCase().includes(term)?'':'none'})}
 
 async function createCustomer(){const customer=$('newCustomerName').value.trim(),pin=$('newCustomerPin').value.trim();if(!customer||!/^[0-9]{4,6}$/.test(pin))return alert('请填写客户名称和 4–6 位 PIN');try{await customerPinRequest('create',customer,pin);$('newCustomerName').value='';$('newCustomerPin').value='';await loadCustomers();$('status').className='ok';$('status').textContent='客户已新增'}catch(error){$('status').className='err';$('status').textContent=error.message}}
