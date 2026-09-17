@@ -87,6 +87,7 @@
         <div id="customerNewForm" class="hidden" style="margin-top:12px"><div class="grid"><input id="newCustomerName" placeholder="新增客户名称"><input id="newCustomerPin" type="password" inputmode="numeric" maxlength="6" placeholder="设置 4–6 位 PIN"></div><div class="actions" style="margin-top:10px"><button onclick="createCustomer()">保存新客户</button></div></div>
         <div id="customerList" class="muted" style="margin-top:12px">暂无客户</div>
       </div>
+      <div id="exchangeStats" class="hidden" style="margin-top:14px"></div>
       <div id="status" class="muted" style="margin-top:10px"></div>
     </div>
     <div class="card tablewrap"><table><thead><tr><th style="width:44px"><input id="selectAllBox" type="checkbox" title="全选当前结果" onchange="toggleSelectAll(this.checked)"></th><th>日期</th><th>员工</th><th>任务名称</th><th class="num">SKU种类</th><th class="num">总数量</th><th>时间</th><th>操作</th></tr></thead><tbody id="tbody"></tbody></table></div>
@@ -145,6 +146,12 @@ function taskType(task){return taskMeta(task)?.type||task?.task_content||"count"
 function boxDetail(task,sku){return taskMeta(task)?.box_details?.[sku]||null}
 function renderTasks(){
  const tb=$('tbody');tb.innerHTML='';
+ const summary=$('exchangeStats');
+ if(orderManageActive){
+   const groups={};currentTasks.forEach(task=>{const name=task.customer_name||'未填写客户';if(!groups[name])groups[name]={tasks:0,total:0};groups[name].tasks++;groups[name].total+=Number(task.total_qty)||0});
+   const rows=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0],'zh-CN')).map(([name,data])=>'<div style="padding:11px 12px;background:#202020;border:1px solid #303030;border-radius:11px"><b>'+esc(name)+'</b><div class="muted" style="margin-top:4px">'+data.tasks+' 个扫单批次 · '+data.total+' 个单号</div></div>').join('');
+   summary.classList.toggle('hidden',!rows);summary.innerHTML=rows?'<b style="display:block;margin-bottom:8px">全部客户实时换面单汇总</b><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:8px">'+rows+'</div>':'';
+ }else{summary.classList.add('hidden');summary.innerHTML='';}
  if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
  let lastCustomer='';
  currentTasks.sort((a,b)=>String(a.customer_name||'未填写客户').localeCompare(String(b.customer_name||'未填写客户'),'zh-CN')||String(b.created_at||'').localeCompare(String(a.created_at||'')));
