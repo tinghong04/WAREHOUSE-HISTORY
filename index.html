@@ -291,18 +291,13 @@ async function copyTask(id){
 
 async function deleteTasks(ids){
   $('status').className='muted';$('status').textContent='正在删除…';
-  const {data:photos,error:photoReadError}=await sb.from('task_order_photos').select('storage_path').in('task_id',ids);
-  if(photoReadError){$('status').textContent='删除失败（读取照片）：'+photoReadError.message;$('status').className='err';return false}
-  const r0=await sb.from('task_order_photos').delete().in('task_id',ids);
-  if(r0.error){$('status').textContent='删除失败（照片记录）：'+r0.error.message;$('status').className='err';return false}
-  const r1=await sb.from('task_items').delete().in('task_id',ids);
-  if(r1.error){$('status').textContent='删除失败（SKU 明细）：'+r1.error.message;$('status').className='err';return false}
-  const r2=await sb.from('tasks').delete().in('id',ids);
-  if(r2.error){$('status').textContent='删除失败（任务）：'+r2.error.message;$('status').className='err';return false}
-  const paths=(photos||[]).map(x=>x.storage_path).filter(Boolean);
-  if(paths.length){const sr=await sb.storage.from('task-order-photos').remove(paths);if(sr.error)console.warn('照片文件清理失败：',sr.error.message)}
-  $('status').className='muted';$('status').textContent='已删除 '+ids.length+' 条任务';
-  await loadTasks();return true;
+  const {data:{session}}=await sb.auth.getSession();if(!session){$('status').className='err';$('status').textContent='登录已失效，请重新登录';return false}
+  try{
+    const response=await fetch('/api/admin-delete-tasks',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({ids})});
+    if(!response.ok)throw new Error();
+    $('status').className='ok';$('status').textContent='已删除 '+ids.length+' 条任务';
+    await loadTasks();return true;
+  }catch(error){$('status').className='err';$('status').textContent='删除失败，请刷新后重试';return false}
 }
 async function deleteVisibleRecords(){
  if(orderManageActive){
