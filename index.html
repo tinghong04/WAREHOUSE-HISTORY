@@ -498,12 +498,12 @@ async function deleteCustomer(){const customer=$('customerManageSearch').value.t
 
 
 async function exportSelectedPreview(){
- const ids=selectedIds();if(ids.length!==1)return alert('请勾选一个批次后复制客户链接');
- const task=currentTasks.find(t=>t.id===ids[0]),batch=String(task?.batch_no||'').trim();
- if(!batch)return alert('这个记录没有批次号，暂时不能生成客户链接');
- const url=location.origin+'/'+encodeURIComponent(batch);
+ const ids=selectedIds();if(ids.length!==1)return alert('请勾选一条该客户的扫单记录后复制链接');
+ const task=currentTasks.find(t=>t.id===ids[0]),customer=String(task?.customer_name||'').trim();
+ if(!customer)return alert('这条扫单记录未填写客户，无法生成客户链接');
+ const url=location.origin+'/customer/'+encodeURIComponent(customer);
  try{await navigator.clipboard.writeText(url)}catch{const input=document.createElement('textarea');input.value=url;input.style.cssText='position:fixed;opacity:0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove()}
- $('status').className='ok';$('status').textContent='客户链接已复制，可直接发给客户';
+ $('status').className='ok';$('status').textContent='客户链接已复制；客户打开后输入自己的 PIN 即可查看实时记录';
 }
 
 // Desktop scanning workbench
