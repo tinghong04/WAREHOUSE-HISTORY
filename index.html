@@ -76,7 +76,7 @@
         <button onclick="loadTasks()">查询</button>
         <button class="dark" onclick="clearFilters()">清除筛选</button>
         <button id="selectToggleBtn" class="dark" onclick="toggleAllSelection()">全选</button>
-        <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button id="customerLinkBtn" class="dark hidden" onclick="exportSelectedPreview()">复制换单客户链接</button>
+        <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button id="historyLinkBtn" class="dark hidden" onclick="copyHistoryLink()">复制历史记录链接</button><button id="customerLinkBtn" class="dark hidden" onclick="exportSelectedPreview()">复制换单客户链接</button>
         <button class="red" onclick="deleteVisibleRecords()">删除记录</button>
       </div>
       <div id="customerPinCard" class="card" style="margin:14px 0 0">
@@ -525,6 +525,17 @@ async function updateCustomerPin(){const customer=$('customerManageSearch').valu
 async function deleteCustomer(){const customer=$('customerManageSearch').value.trim(),pin=$('deleteCustomerPin').value.trim();if(!customer)return alert('请先在上方搜索并选择客户');if(!/^[0-9]{4,6}$/.test(pin))return alert('请输入该客户的 4–6 位 PIN');if(!confirm('确定删除客户“'+customer+'”？\n\n不会删除已有扫单历史。'))return;try{await customerPinRequest('delete',customer,pin);$('customerManageSearch').value='';$('deleteCustomerPin').value='';$('customerDeleteForm').classList.add('hidden');await loadCustomers();$('status').className='ok';$('status').textContent='客户已删除'}catch(error){$('status').className='err';$('status').textContent=error.message}}
 
 
+async function copyHistoryLink(){
+ const ids=selectedIds();if(ids.length!==1)return alert('请勾选一条历史记录后复制链接');
+ const {data:{session}}=await sb.auth.getSession();if(!session)return alert('登录已失效，请重新登录');
+ try{
+  const r=await fetch('/api/admin-history-link',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token},body:JSON.stringify({taskId:ids[0]})}),d=await r.json();
+  if(!r.ok)throw Error(d.error||'生成链接失败');
+  const url=location.origin+'/history/'+encodeURIComponent(ids[0])+'?k='+encodeURIComponent(d.token);
+  try{await navigator.clipboard.writeText(url)}catch{const input=document.createElement('textarea');input.value=url;input.style.cssText='position:fixed;opacity:0';document.body.appendChild(input);input.select();document.execCommand('copy');input.remove()}
+  $('status').className='ok';$('status').textContent='历史记录链接已复制；客户可直接查看该批次、照片和明细';
+ }catch(e){$('status').className='err';$('status').textContent='生成链接失败：'+(e.message||'请重试')}
+}
 async function exportSelectedPreview(){
  const ids=selectedIds();if(ids.length!==1)return alert('请勾选一条该客户的扫单记录后复制链接');
  const task=currentTasks.find(t=>t.id===ids[0]),customer=String(task?.customer_name||'').trim();
@@ -545,7 +556,7 @@ function selectDesktopTab(tab){
  $('workbenchTabBtn').classList.toggle('active',work);$('workbenchTabBtn').classList.toggle('dark',!work);
  $('historyTabBtn').classList.toggle('active',tab==='history');$('historyTabBtn').classList.toggle('dark',tab!=='history');
  $('exchangeTabBtn').classList.toggle('active',exchange);$('exchangeTabBtn').classList.toggle('dark',!exchange);
- $('customerPinCard').classList.toggle('hidden',!exchange);$('exchangeTools').classList.toggle('hidden',!exchange);$('customerLinkBtn').classList.toggle('hidden',!exchange);
+ $('customerPinCard').classList.toggle('hidden',!exchange);$('exchangeTools').classList.toggle('hidden',!exchange);$('customerLinkBtn').classList.toggle('hidden',!exchange);$('historyLinkBtn').classList.toggle('hidden',tab!=='history');
  if(exchange&&!$('exchangeMonth').value)$('exchangeMonth').value=new Date().toISOString().slice(0,7);
  if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);else{loadTasks();if(exchange)loadCustomers();}
 }
