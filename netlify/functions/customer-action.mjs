@@ -8,7 +8,7 @@ export default async req=>{
   if(!name||!taskId||!orderNo||!["tk","return"].includes(status)||!String(trackingNo||"").trim())return Response.json({error:"资料不完整"},{status:400});
   const rows=await (await db("tasks?select=customer_name,task_content&id=eq."+encodeURIComponent(taskId)+"&limit=1",k)).json();
   if(!rows[0]||rows[0].customer_name!==name)return Response.json({error:"订单不属于该客户"},{status:403});
-  let m={};try{m=JSON.parse(rows[0].task_content||"{}")}catch{m={type:rows[0].task_content||"order"}}m.type=m.type||"order";m.customer_actions=m.customer_actions||{};m.customer_actions[String(orderNo)]={status,tracking_no:String(trackingNo).trim(),updated_at:new Date().toISOString()};
+  let m={};try{m=JSON.parse(rows[0].task_content||"{}")}catch{m={type:rows[0].task_content||"order"}}m.type=m.type||"order";m.customer_actions=m.customer_actions||{};if(m.customer_actions[String(orderNo)])return Response.json({error:"该单号已填写，客户不能再次修改"},{status:409});m.customer_actions[String(orderNo)]={status,tracking_no:String(trackingNo).trim(),updated_at:new Date().toISOString()};
   await db("tasks?id=eq."+encodeURIComponent(taskId),k,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({task_content:JSON.stringify(m)})});
   return Response.json({ok:true})
  }catch(e){return Response.json({error:e.message||"保存失败"},{status:500})}
