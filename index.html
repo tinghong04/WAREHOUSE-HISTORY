@@ -509,9 +509,10 @@ async function exportSelectedPreview(){
 // Desktop scanning workbench
 let deskMode='count', deskManual=false, deskCounts={}, deskHistory=[];
 function deskUuid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}
-let orderManageActive=false;
+let orderManageActive=false, exchangeRefreshTimer=null;
 function selectDesktopTab(tab){
  const work=tab==='workbench',exchange=tab==='exchange';orderManageActive=exchange;
+ clearInterval(exchangeRefreshTimer);exchangeRefreshTimer=exchange?setInterval(()=>{if(orderManageActive)loadTasks()},15000):null;
  $('workbench').classList.toggle('hidden',!work);$('historyPanel').classList.toggle('hidden',work);
  $('workbenchTabBtn').classList.toggle('active',work);$('workbenchTabBtn').classList.toggle('dark',!work);
  $('historyTabBtn').classList.toggle('active',tab==='history');$('historyTabBtn').classList.toggle('dark',tab!=='history');
