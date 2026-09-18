@@ -159,7 +159,7 @@ function printLabelPhoto(taskId,index){
  if(!photo?.url)return alert('面单照片暂时无法读取');
  const win=window.open('','_blank','width=900,height=900');
  if(!win)return alert('浏览器拦截了打印窗口，请允许弹出窗口后再试');
- win.document.write('<!doctype html><html><head><title>打印面单</title><style>html,body{margin:0;background:#fff}img{display:block;max-width:100%;max-height:100vh;margin:auto;object-fit:contain}@media print{img{max-width:100vw;max-height:100vh}}</style></head><body><img src="'+esc(photo.url)+'" onload="setTimeout(function(){print()},200)" alt="TK 面单"></body></html>');
+ win.document.write('<!doctype html><html><head><title>打印面单</title><style>@page{size:76mm 130mm;margin:0}html,body{width:76mm;height:130mm;margin:0;padding:0;background:#fff;overflow:hidden}img{display:block;width:76mm;height:130mm;object-fit:contain;object-position:center}@media print{html,body,img{width:76mm!important;height:130mm!important;margin:0!important}}</style></head><body><img src="'+esc(photo.url)+'" onload="setTimeout(function(){print()},300)" alt="TK 面单"></body></html>');
  win.document.close();
 }
 async function loadTasks(){
