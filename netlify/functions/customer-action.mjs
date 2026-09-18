@@ -9,10 +9,10 @@ export default async req=>{
   const {customer,taskId,orderNo,status,trackingNo,photoData}=await req.json(),name=String(customer||"").trim();
   if(!name||!taskId||!orderNo||!["tk","return"].includes(status)||!String(trackingNo||"").trim())return Response.json({error:"资料不完整"},{status:400});
   if(status==="tk"&&!photoData)return Response.json({error:"请附上 TK 面单照片"},{status:400});
-  const rows=await (await db("tasks?select=customer_name,task_content,user_id&id=eq."+encodeURIComponent(taskId)+"&limit=1",k)).json();
+  const rows=await (await db("tasks?select=customer_name,task_content&id=eq."+encodeURIComponent(taskId)+"&limit=1",k)).json();
   if(!rows[0]||rows[0].customer_name!==name)return Response.json({error:"订单不属于该客户"},{status:403});
   let m={};try{m=JSON.parse(rows[0].task_content||"{}")}catch{m={type:rows[0].task_content||"order"}}m.type=m.type||"order";m.customer_actions=m.customer_actions||{};if(m.customer_actions[String(orderNo)])return Response.json({error:"该单号已填写，客户不能再次修改"},{status:409});
-  if(status==="tk")await uploadLabel(taskId,orderNo,photoData,k,rows[0].user_id);
+  if(status==="tk"){const owners=await (await db("task_order_photos?select=user_id&task_id=eq."+encodeURIComponent(taskId)+"&user_id=not.is.null&limit=1",k)).json();if(!owners[0]?.user_id)throw Error("该批次缺少照片创建人，暂时无法保存面单");await uploadLabel(taskId,orderNo,photoData,k,owners[0].user_id);}
   m.customer_actions[String(orderNo)]={status,tracking_no:String(trackingNo).trim(),updated_at:new Date().toISOString()};
   await db("tasks?id=eq."+encodeURIComponent(taskId),k,{method:"PATCH",headers:{Prefer:"return=minimal"},body:JSON.stringify({task_content:JSON.stringify(m)})});
   return Response.json({ok:true})
