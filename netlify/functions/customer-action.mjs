@@ -2,7 +2,7 @@ const U="https://brqurxainlsteygsqfcu.supabase.co";
 async function db(p,k,o={}){const r=await fetch(U+"/rest/v1/"+p,{...o,headers:{apikey:k,Authorization:"Bearer "+k,"Content-Type":"application/json",...(o.headers||{})}});if(!r.ok)throw Error(await r.text()||"数据库保存失败");return r}
 function imageBytes(data){const m=String(data||"").match(/^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/i);if(!m)throw Error("面单照片格式无效");const bytes=Uint8Array.from(atob(m[2]),c=>c.charCodeAt(0));if(!bytes.length||bytes.length>4*1024*1024)throw Error("面单照片请控制在 4MB 以内");return{bytes,ext:m[1].toLowerCase()==="jpeg"?"jpg":m[1]}}
 async function uploadLabel(taskId,orderNo,data,k,userId){const {bytes,ext}=imageBytes(data),safe=encodeURIComponent(String(orderNo)).replace(/%/g,"_"),path="customer-labels/"+taskId+"/"+safe+"_"+Date.now()+"."+ext;const r=await fetch(U+"/storage/v1/object/task-order-photos/"+path,{method:"POST",headers:{apikey:k,Authorization:"Bearer "+k,"Content-Type":"image/"+(ext==="jpg"?"jpeg":ext),"x-upsert":"false"},body:bytes});if(!r.ok)throw Error("面单照片上传失败");await db("task_order_photos",k,{method:"POST",headers:{Prefer:"return=minimal"},body:JSON.stringify({task_id:taskId,user_id:userId,order_no:"TK面单："+String(orderNo),storage_path:path,captured_at:new Date().toISOString()})})}
- async req=>{
+export default async req=>{
  if(req.method!=="POST")return new Response(JSON.stringify({error:"Method not allowed"}),{status:405,headers:{"Content-Type":"application/json"}});
  const k=Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY");if(!k)return Response.json({error:"暂不可用"},{status:503});
  try{
@@ -18,4 +18,4 @@ async function uploadLabel(taskId,orderNo,data,k,userId){const {bytes,ext}=image
   return Response.json({ok:true})
  }catch(e){return Response.json({error:e.message||"保存失败"},{status:500})}
 };
-const config={path:"/api/customer-action"};
+export const config={path:"/api/customer-action"};
