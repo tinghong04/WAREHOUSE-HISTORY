@@ -189,7 +189,7 @@ function renderTasks(){
  }else{summary.classList.add('hidden');summary.innerHTML='';}
  if(!currentTasks.length){tb.innerHTML='<tr><td colspan="8" class="muted">没有记录</td></tr>';const all=$('selectAllBox');if(all){all.checked=false;all.indeterminate=false}return}
  let lastCustomer='';
- currentTasks.sort((a,b)=>String(a.customer_name||'未填写客户').localeCompare(String(b.customer_name||'未填写客户'),'zh-CN')||String(b.created_at||'').localeCompare(String(a.created_at||'')));
+ currentTasks.sort(orderManageActive?(a,b)=>String(a.customer_name||'未填写客户').localeCompare(String(b.customer_name||'未填写客户'),'zh-CN')||String(b.created_at||'').localeCompare(String(a.created_at||'')):(a,b)=>String(b.task_date||'').localeCompare(String(a.task_date||''))||String(b.created_at||'').localeCompare(String(a.created_at||'')));
  currentTasks.forEach(t=>{
    const type=taskType(t);
    if(orderManageActive){
