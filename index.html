@@ -154,6 +154,14 @@ async function undoCustomerAction(taskId,encodedOrder){
 }
 
 
+function printLabelPhoto(taskId,index){
+ const photo=(taskPhotosByTask[taskId]||[])[Number(index)];
+ if(!photo?.url)return alert('面单照片暂时无法读取');
+ const win=window.open('','_blank','width=900,height=900');
+ if(!win)return alert('浏览器拦截了打印窗口，请允许弹出窗口后再试');
+ win.document.write('<!doctype html><html><head><title>打印面单</title><style>html,body{margin:0;background:#fff}img{display:block;max-width:100%;max-height:100vh;margin:auto;object-fit:contain}@media print{img{max-width:100vw;max-height:100vh}}</style></head><body><img src="'+esc(photo.url)+'" onload="setTimeout(function(){print()},200)" alt="TK 面单"></body></html>');
+ win.document.close();
+}
 async function loadTasks(){
  $('status').textContent='读取中…';
  let q=sb.from('tasks').select('*').order('task_date',{ascending:false}).order('created_at',{ascending:false}).limit(1000);
@@ -221,9 +229,9 @@ async function toggleDetails(id,btn){
      return {...photo,url:error?'':data?.signedUrl||''};
    }));
    taskPhotosByTask[id]=signed;
-   photosHtml='<h3 style="margin:18px 0 8px">'+(isInbound?'入库 / 异常照片':'单号照片')+'</h3><div class="order-photo-grid">'+signed.map(photo=>
+   photosHtml='<h3 style="margin:18px 0 8px">'+(isInbound?'入库 / 异常照片':'单号照片')+'</h3><div class="order-photo-grid">'+signed.map((photo,index)=>
      '<div class="order-photo">'+(photo.url?'<a href="'+esc(photo.url)+'" target="_blank" rel="noopener"><img src="'+esc(photo.url)+'" alt="单号 '+esc(photo.order_no)+'"></a>':'<div class="muted" style="padding:12px">照片链接失效</div>')+
-     '<b>单号：'+esc(photo.order_no)+'</b><span>'+new Date(photo.captured_at).toLocaleString()+'</span></div>'
+     '<b>'+((String(photo.order_no||'').startsWith('TK面单：'))?'TK 面单：':'单号：')+esc(String(photo.order_no||'').replace(/^TK面单：/,''))+'</b><span>'+new Date(photo.captured_at).toLocaleString()+'</span>'+((String(photo.order_no||'').startsWith('TK面单：')&&photo.url)?'<button class="copybtn sku-copy" style="margin-top:8px" onclick="printLabelPhoto(\''+id+'\','+index+')">打印面单</button>':'')+'</div>'
    ).join('')+'</div>';
  }else{
    photosHtml='<div class="muted" style="margin-top:14px">'+(isInbound?'这个入库任务没有照片':'这个任务没有单号照片')+'</div>';
