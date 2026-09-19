@@ -1,0 +1,6 @@
+const U="https://brqurxainlsteygsqfcu.supabase.co",ADMIN="gohtinghong2004@gmail.com";
+async function admin(req,key){const token=req.headers.get("authorization");if(!token)throw Error("未登录");const r=await fetch(U+"/auth/v1/user",{headers:{apikey:key,Authorization:token}}),u=await r.json();if(!r.ok||u.email!==ADMIN)throw Error("仅管理员可操作")}
+function meta(v){try{return JSON.parse(v||"{}")}catch{return{}}}
+async function db(path,key,opt={}){const r=await fetch(U+"/rest/v1/"+path,{...opt,headers:{apikey:key,Authorization:"Bearer "+key,...(opt.headers||{})}});if(!r.ok)throw Error("删除失败");return r}
+export default async req=>{if(req.method!=="POST")return new Response("Method not allowed",{status:405});const key=Netlify.env.get("SUPABASE_SERVICE_ROLE_KEY");try{await admin(req,key);const tasks=await (await db("tasks?select=id,task_content&limit=1000",key)).json();const ids=(tasks||[]).filter(t=>meta(t.task_content).type==="order").map(t=>t.id);if(ids.length){const target=encodeURIComponent("in.("+ids.join(",")+")");for(const table of ["task_items","task_order_photos"]){await db(table+"?task_id="+target,key,{method:"DELETE"})}await db("tasks?id="+target,key,{method:"DELETE"})}return Response.json({ok:true,deleted:ids.length})}catch(e){return new Response(e.message||"删除失败",{status:403})}};
+export const config={path:"/api/admin-delete-exchange-records"};
