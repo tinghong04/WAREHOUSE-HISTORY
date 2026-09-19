@@ -102,7 +102,7 @@ const SUPABASE_KEY="sb_publishable_WGmlYFeJDFhyCSteTxQGWQ_3aggl9LK";
 const sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 // Task writer mirrors the phone app's anonymous sync client; the admin session remains used for history access.
 const taskWriteSb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-let currentTasks=[], taskPhotosByTask={};
+let currentTasks=[], taskPhotosByTask={}, orderRecordsByTask={};
 const $=id=>document.getElementById(id);
 
 async function login(){
@@ -173,6 +173,8 @@ async function loadTasks(){
  if(error){$('status').textContent='读取失败：'+error.message;$('status').className='err';return}
  currentTasks=data||[];
  currentTasks=currentTasks.filter(task=>orderManageActive?taskType(task)==='order':taskType(task)!=='order');
+ orderRecordsByTask={};
+ if(orderManageActive&&currentTasks.length){const ids=currentTasks.map(task=>task.id);const {data:orderItems}=await sb.from('task_items').select('task_id,sku').in('task_id',ids);(orderItems||[]).forEach(item=>(orderRecordsByTask[item.task_id]||(orderRecordsByTask[item.task_id]=[])).push(String(item.sku||'')))}
  const skuKeyword=$('skuSearch').value.trim();
  if(skuKeyword){
    const {data:matches,error:matchError}=await sb.from('task_items').select('task_id').ilike('sku','%'+skuKeyword+'%');
@@ -191,7 +193,7 @@ function renderTasks(){
  const tb=$('tbody');tb.innerHTML='';
  const summary=$('exchangeStats');
  if(orderManageActive){
-   const groups={};currentTasks.forEach(task=>{const name=task.customer_name||'未填写客户',actions=taskMeta(task)?.customer_actions||{};if(!groups[name])groups[name]={tasks:0,total:0,tk:0,returns:0};groups[name].tasks++;groups[name].total+=Number(task.total_qty)||0;Object.values(actions).forEach(action=>{if(action.status==='tk')groups[name].tk++;if(action.status==='return')groups[name].returns++})});
+   const groups={};currentTasks.forEach(task=>{const name=task.customer_name||'未填写客户',actions=taskMeta(task)?.customer_actions||{},records=orderRecordsByTask[task.id]||[];if(!groups[name])groups[name]={tasks:0,total:0,tk:0,returns:0};groups[name].tasks++;groups[name].total+=records.length;records.forEach(orderNo=>{const action=actions[orderNo];if(action?.status==='tk')groups[name].tk++;if(action?.status==='return')groups[name].returns++})});
    const rows=Object.entries(groups).sort((a,b)=>a[0].localeCompare(b[0],'zh-CN')).map(([name,data])=>'<div style="padding:11px 12px;background:#202020;border:1px solid #303030;border-radius:11px"><b>'+esc(name)+'</b><div class="muted" style="margin-top:4px">扫单 '+data.total+' · 已填 TK '+data.tk+' · 退货 '+data.returns+' · 待处理 '+Math.max(0,data.total-data.tk-data.returns)+'</div></div>').join('');
    summary.classList.toggle('hidden',!rows);summary.innerHTML=rows?'<b style="display:block;margin-bottom:8px">全部客户实时换面单汇总</b><div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:8px">'+rows+'</div>':'';
  }else{summary.classList.add('hidden');summary.innerHTML='';}
