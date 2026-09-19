@@ -32,7 +32,6 @@
   <div class="desktop-tabs">
     <button id="workbenchTabBtn" class="active" onclick="selectDesktopTab('workbench')">⌁ 工作台</button>
     <button id="historyTabBtn" class="dark" onclick="selectDesktopTab('history')">▦ 历史记录</button>
-    <button id="exchangeTabBtn" class="dark" onclick="selectDesktopTab('exchange')">⇄ 换单管理</button>
     <button class="dark" style="margin-left:auto" onclick="logout()">退出</button>
   </div>
 
@@ -77,7 +76,7 @@
         <button class="dark" onclick="clearFilters()">清除筛选</button>
         <button id="selectToggleBtn" class="dark" onclick="toggleAllSelection()">全选</button>
         <button class="dark" onclick="exportSelected()">导出 Excel</button><button class="dark" onclick="exportSelectedPdf()">导出 PDF</button><button id="historyLinkBtn" class="dark hidden" onclick="copyHistoryLink()">复制历史记录链接</button><button id="customerLinkBtn" class="dark hidden" onclick="exportSelectedPreview()">复制换单客户链接</button>
-        <button class="red" onclick="deleteVisibleRecords()">删除记录</button>
+        <button class="red" onclick="deleteVisibleRecords()">删除记录</button><button class="red" onclick="deleteAllExchangeHistory()">清空旧换单历史</button>
       </div>
       <div id="customerPinCard" class="card" style="margin:14px 0 0">
         <b>客户管理</b>
@@ -380,6 +379,12 @@ async function deleteTasks(ids){
     await loadTasks();return true;
   }catch(error){$('status').className='err';$('status').textContent='删除失败，请刷新后重试';return false}
 }
+async function deleteAllExchangeHistory(){
+ if(!confirm('确定永久清空所有旧换单历史吗？\n\n不会删除点货和入库历史。'))return;
+ const {data:{session}}=await sb.auth.getSession();if(!session)return alert('登录已失效，请重新登录');
+ $('status').className='muted';$('status').textContent='正在清空旧换单历史…';
+ try{const response=await fetch('/api/admin-delete-exchange-records',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+session.access_token}});const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error);$('status').className='ok';$('status').textContent='已清空 '+data.deleted+' 条换单任务';await loadTasks()}catch(e){$('status').className='err';$('status').textContent='清空失败，请刷新后重试'}
+}
 async function deleteVisibleRecords(){
  await deleteSelected();
 }
@@ -589,12 +594,12 @@ let deskMode='count', deskManual=false, deskCounts={}, deskHistory=[];
 function deskUuid(){return crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)}
 let orderManageActive=false, exchangeRefreshTimer=null;
 function selectDesktopTab(tab){
- const work=tab==='workbench',exchange=tab==='exchange';orderManageActive=exchange;
+ const work=tab==='workbench',exchange=false;orderManageActive=false;
  clearInterval(exchangeRefreshTimer);exchangeRefreshTimer=exchange?setInterval(()=>{if(orderManageActive)loadTasks()},15000):null;
  $('workbench').classList.toggle('hidden',!work);$('historyPanel').classList.toggle('hidden',work);
  $('workbenchTabBtn').classList.toggle('active',work);$('workbenchTabBtn').classList.toggle('dark',!work);
  $('historyTabBtn').classList.toggle('active',tab==='history');$('historyTabBtn').classList.toggle('dark',tab!=='history');
- $('exchangeTabBtn').classList.toggle('active',exchange);$('exchangeTabBtn').classList.toggle('dark',!exchange);
+ if($('exchangeTabBtn')){$('exchangeTabBtn').classList.toggle('active',exchange);$('exchangeTabBtn').classList.toggle('dark',!exchange);}
  $('customerPinCard').classList.toggle('hidden',!exchange);$('exchangeTools').classList.toggle('hidden',!exchange);$('customerLinkBtn').classList.toggle('hidden',!exchange);$('historyLinkBtn').classList.toggle('hidden',tab!=='history');
  if(exchange&&!$('exchangeMonth').value)$('exchangeMonth').value=new Date().toISOString().slice(0,7);
  if(work)setTimeout(()=>deskManual?$('deskSku').focus():$('deskScanner').focus(),50);else{loadTasks();if(exchange)loadCustomers();}
