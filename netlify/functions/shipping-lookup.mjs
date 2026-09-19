@@ -18,14 +18,16 @@ export default async req=>{
   const {deviceId,customer,trackingNo,orderNo}=await req.json(),id=String(deviceId||""),name=String(customer||"").trim(),tracking=String(trackingNo||"").trim(),order=String(orderNo||"").trim();
   const devices=await q("shipping_devices?select=device_id,bound&device_id=eq."+encodeURIComponent(id)+"&limit=1",key);
   if(!devices[0]||devices[0].bound!==true)return reply({error:"这台手机尚未绑定，请先扫描电脑版生成的绑定二维码"},403);
-  if(!name||(!tracking&&!order))return reply({error:"请选择客户并扫描物流单号"},400);
-  const tasks=await q("tasks?select=id,customer_name,task_content&customer_name=eq."+encodeURIComponent(name)+"&order=created_at.desc&limit=80",key);
+  if(!tracking&&!order)return reply({error:"请扫描 TK 或虾皮单号"},400);
+  // A bound warehouse device may resolve the pair across customers; customer share pages remain isolated.
+  const customerFilter=name?"&customer_name=eq."+encodeURIComponent(name):"";
+  const tasks=await q("tasks?select=id,customer_name,task_content"+customerFilter+"&order=created_at.desc&limit=80",key);
   for(const task of tasks){
-   const m=meta(task);if(task.customer_name!==name||m.type!=="order")continue;
+   const m=meta(task);if((name&&task.customer_name!==name)||m.type!=="order")continue;
    for(const [shopeeNo,action] of Object.entries(m.customer_actions||{})){
     if(action?.status!=="tk"||!String(action.tracking_no||"").trim())continue;
-    if(tracking&&String(action.tracking_no).trim()===tracking)return reply({ok:true,orderNo:shopeeNo});
-    if(order&&shopeeNo===order)return reply({ok:true,trackingNo:String(action.tracking_no).trim()});
+    if(tracking&&String(action.tracking_no).trim()===tracking)return reply({ok:true,taskId:task.id,customer:task.customer_name,orderNo:shopeeNo,trackingNo:String(action.tracking_no).trim(),status:action.shipping_status||"pending"});
+    if(order&&shopeeNo===order)return reply({ok:true,taskId:task.id,customer:task.customer_name,orderNo:shopeeNo,trackingNo:String(action.tracking_no).trim(),status:action.shipping_status||"pending"});
    }
   }
   return reply({error:tracking?"没有找到该 TK 物流单号对应的虾皮单号":"没有找到已填写 TK 的虾皮单号"},404)
