@@ -379,12 +379,6 @@ async function deleteTasks(ids){
   }catch(error){$('status').className='err';$('status').textContent='删除失败，请刷新后重试';return false}
 }
 async function deleteVisibleRecords(){
- if(orderManageActive){
-   const ids=currentTasks.map(task=>task.id);
-   if(!ids.length)return alert('当前没有扫单记录');
-   if(!confirm('确定删除当前显示的 '+ids.length+' 条扫单记录？\n\n相关单号和照片也会一并删除，无法恢复。'))return;
-   await deleteTasks(ids);return;
- }
  await deleteSelected();
 }
 
